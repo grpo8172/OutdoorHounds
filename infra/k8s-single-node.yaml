@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: outdoor-hounds
+  labels:
+    app: outdoor-hounds
+spec:
+  replicas: 1 # Single node constraint
+  selector:
+    matchLabels:
+      app: outdoor-hounds
+  template:
+    metadata:
+      labels:
+        app: outdoor-hounds
+    spec:
+      containers:
+      - name: outdoor-hounds
+        image: gcr.io/your-project/outdoor-hounds:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          value: "sqlite:////data/outdoor_hounds.db"
+        - name: LLM_ENABLED
+          value: "false"
+        - name: LLM_PROVIDER
+          value: "mock"
+        volumeMounts:
+        - name: data-volume
+          mountPath: /data
+        - name: media-volume
+          mountPath: /app/frontend/dist/media
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: outdoor-hounds-data-pvc
+      - name: media-volume
+        persistentVolumeClaim:
+          claimName: outdoor-hounds-media-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: outdoor-hounds-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: outdoor-hounds-media-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: outdoor-hounds-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: outdoor-hounds
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
