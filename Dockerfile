@@ -20,6 +20,9 @@ COPY backend/ ./backend/
 # Copy built frontend
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
+# Start app correctly
+ENV PYTHONPATH=/app/backend
+
 # Expose port
 EXPOSE 8000
 

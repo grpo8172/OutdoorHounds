@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: outdoor-hounds
-        image: gcr.io/your-project/outdoor-hounds:latest
+        image: australia-southeast1-docker.pkg.dev/project-be1bbbb6-30fe-4dd4-95e/outdoor-hounds/outdoor-hounds:latest
         ports:
         - containerPort: 8000
         env:
