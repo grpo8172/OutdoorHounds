@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+web-build/
+frontend/dist/
+
+# Expo
+.expo/
+mobile/.expo/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.venv/
+venv/
+
+# Environment files
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Database (local dev SQLite)
+backend/data/*.db
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# TypeScript
+*.tsbuildinfo
+
+# Cache
+.cache/
+.metro-health-check*
+
+# Mobile native build outputs
+/ios
+/android
+.kotlin/
+
+# Misc
+*.pem
+*.tgz
+*.tar.gz

@@ -2,50 +2,136 @@
 
 An AI-guided service platform for Jenna Petersen's pet sitting, dog hiking, and animal adoption business.
 
-Built with **FastAPI**, **React**, and **SQLite** for a clean, modular MVP that deploys easily to a single GKE node.
+Built with **FastAPI** (backend), **React/Vite** (web frontend), **Expo/React Native** (mobile), and **MySQL** (shared database).
 
 ## Features
+
 - **Storefront**: Browse adoptable pets, book group hikes, and arrange pet sitting.
 - **Owner Setup Assistant**: AI helps draft business profiles and listings.
 - **Agentic Guardrails**: AI cannot publish listings or confirm bookings. All state changes require explicit owner approval via the Admin Dashboard.
 - **Mock LLM Mode**: Run locally for free using deterministic fixtures without needing API keys.
-- **Easy Photos**: Drop photos into `frontend/src/assets/photos` (or the deployed media volume) and reference them in the listings.
+- **Shared Database**: Items created in the mobile app appear on the web storefront automatically.
 
-## Local Development Setup
+---
 
-### 1. Backend
+## Running with Docker Compose (recommended)
+
+Starts the FastAPI backend, React frontend, and MySQL database together.
+
+```bash
+# From the repo root
+docker compose up --build
+```
+
+- Web app: http://localhost:8000
+- MySQL: localhost:3306
+
+To also start the mobile API and Expo web export:
+
+```bash
+docker compose --profile mobile up --build
+```
+
+- Mobile API (tRPC): http://localhost:3000
+- Mobile web: http://localhost:8081
+
+---
+
+## Local Development
+
+### Backend (FastAPI)
+
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate
+source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+# Copy and edit the example env file
+cp .env.example .env
 
 # Seed the database with initial approved listings
 python seed.py
 
-# Run the API
+# Start the API server
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 2. Frontend
-In a new terminal:
+API available at http://localhost:8000
+
+### Frontend (React/Vite)
+
+In a separate terminal:
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Open `http://localhost:5173` in your browser.
 
-## Budget & Cost Notes
+Web app available at http://localhost:5173 (proxies `/api` to the backend at port 8000).
 
-*   **Infrastructure**: The included Kubernetes manifests (`infra/k8s-single-node.yaml`) restrict the deployment to exactly 1 replica. This is designed to run on a single small GKE node (e.g., `e2-small` or `e2-medium`), keeping cloud costs extremely low for the MVP.
-*   **Database**: Uses SQLite by default, which requires zero separate database hosting costs. It stores the `.db` file in the mounted PVC.
-*   **LLM Costs**: 
-    *   By default, `LLM_ENABLED` is `false` and `LLM_PROVIDER` is `mock`. This uses local Python fixtures to return deterministic AI responses, costing $0.
-    *   To use a real LLM, set `LLM_ENABLED=true`, `LLM_PROVIDER=openai`, and provide an `OPENAI_API_KEY`.
-    *   Guardrails prevent the LLM from being called unnecessarily (e.g., simple CRUD actions bypass the LLM entirely).
+### Mobile (Expo/React Native)
 
-## Architecture & Code Cleanliness
+In a separate terminal:
 
-See `ARCHITECTURE.md` for a breakdown of the data layer, services, and policy guardrails. The project strictly separates API routing from business logic and LLM orchestration.
-# OutdoorHounds
+```bash
+cd mobile
+pnpm install
+
+# Start the tRPC API server and Metro bundler together
+pnpm dev
+```
+
+- Metro bundler: http://localhost:8081
+- tRPC API: http://localhost:3000
+
+To run on a physical device, generate a QR code:
+
+```bash
+pnpm qr
+```
+
+---
+
+## Project Structure
+
+```
+outdoor_hounds/
+├── Dockerfile            # Builds backend + frontend into a single image
+├── docker-compose.yml    # Runs web + MySQL (add --profile mobile for mobile services)
+├── backend/              # FastAPI app (Python)
+├── frontend/             # React/Vite web app
+├── mobile/               # Expo/React Native app + Express/tRPC server
+└── infra/                # Kubernetes / GCP deployment manifests
+```
+
+---
+
+## Database
+
+The backend and mobile app share a single **MySQL** database (`outdoor_hounds`).
+
+- `catalogue_items` — shared table; items created in either app appear on both
+- `web_users`, `web_enquiries`, `web_audit_events` — web-only tables managed by SQLAlchemy
+
+Run database migrations for the mobile schema (requires MySQL running):
+
+```bash
+cd mobile
+pnpm db:push
+```
+
+---
+
+## LLM / AI Notes
+
+- `LLM_ENABLED=false` by default — the app runs entirely offline using mock fixtures.
+- To enable a real LLM, set `LLM_ENABLED=true`, `LLM_PROVIDER=openai`, and `OPENAI_API_KEY` in `backend/.env`.
+- Guardrails prevent the AI from publishing listings or confirming bookings without owner approval.
+
+---
+
+## Infrastructure
+
+See `infra/k8s-single-node.yaml` and `DEPLOY_GCP.md` for deployment to a single GKE node.
