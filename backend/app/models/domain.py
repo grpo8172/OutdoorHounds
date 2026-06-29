@@ -53,3 +53,20 @@ class AuditEvent(Base):
     event_type = Column(String(64))
     details = Column(Text)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class Profile(Base):
+    # Shared table — created and owned by the mobile auth flow.
+    # user_id references the mobile `users` table (Drizzle-managed).
+    __tablename__ = "profiles"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, unique=True, index=True)
+    display_name = Column(String(255), nullable=True)
+    profile_type = Column(String(64), default="individual")
+    location = Column(String(255), nullable=True)
+    contact_email = Column(String(320), nullable=True)
+    contact_phone = Column(String(64), nullable=True)
+    bio = Column(Text, nullable=True)
+    preferred_modes_json = Column(JSON, nullable=True)
+    profile_meta_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)

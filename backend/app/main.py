@@ -113,6 +113,34 @@ def get_audit(db: Session = Depends(get_db)):
     return db.query(models.AuditEvent).order_by(models.AuditEvent.created_at.desc()).limit(100).all()
 
 
+@app.get("/api/me/profile", response_model=schemas.ProfileResponse)
+def get_my_profile(
+    user_id: int = Query(..., description="Mobile user ID"),
+    db: Session = Depends(get_db),
+):
+    profile = db.query(models.Profile).filter(models.Profile.user_id == user_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return profile
+
+
+@app.put("/api/me/profile", response_model=schemas.ProfileResponse)
+def update_my_profile(
+    update: schemas.ProfileUpdate,
+    user_id: int = Query(..., description="Mobile user ID"),
+    db: Session = Depends(get_db),
+):
+    profile = db.query(models.Profile).filter(models.Profile.user_id == user_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    for field, value in update.model_dump(exclude_unset=True).items():
+        setattr(profile, field, value)
+    _log(db, "profile_updated", f"Profile for user {user_id} updated.")
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+
 @app.post("/api/assistant/setup")
 def assistant_setup(prompt: str, llm: LLMProvider = Depends(get_llm_provider)):
     """Setup assistant proposes structure only; it cannot publish anything itself."""

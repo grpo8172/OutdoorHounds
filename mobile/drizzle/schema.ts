@@ -40,3 +40,21 @@ export const catalogueItems = mysqlTable("catalogue_items", {
 
 export type CatalogueItem = typeof catalogueItems.$inferSelect;
 export type InsertCatalogueItem = typeof catalogueItems.$inferInsert;
+
+export const profiles = mysqlTable("profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull().unique(),
+  displayName: varchar("display_name", { length: 255 }),
+  profileType: varchar("profile_type", { length: 64 }).notNull().default("individual"),
+  location: varchar("location", { length: 255 }),
+  contactEmail: varchar("contact_email", { length: 320 }),
+  contactPhone: varchar("contact_phone", { length: 64 }),
+  bio: text("bio"),
+  preferredModesJson: json("preferred_modes_json"),
+  profileMetaJson: json("profile_meta_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Profile = typeof profiles.$inferSelect;
+export type InsertProfile = typeof profiles.$inferInsert;
