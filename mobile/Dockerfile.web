@@ -1,0 +1,36 @@
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+RUN npm install -g pnpm
+
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+
+# EXPO_PUBLIC_* vars are baked into the static build at compile time
+ARG EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
+ARG EXPO_PUBLIC_APP_ID=""
+ARG EXPO_PUBLIC_OAUTH_SERVER_URL=""
+ARG EXPO_PUBLIC_OAUTH_PORTAL_URL=""
+ARG EXPO_PUBLIC_OWNER_OPEN_ID=""
+ARG EXPO_PUBLIC_OWNER_NAME=""
+
+ENV EXPO_PUBLIC_API_BASE_URL=$EXPO_PUBLIC_API_BASE_URL
+ENV EXPO_PUBLIC_APP_ID=$EXPO_PUBLIC_APP_ID
+ENV EXPO_PUBLIC_OAUTH_SERVER_URL=$EXPO_PUBLIC_OAUTH_SERVER_URL
+ENV EXPO_PUBLIC_OAUTH_PORTAL_URL=$EXPO_PUBLIC_OAUTH_PORTAL_URL
+ENV EXPO_PUBLIC_OWNER_OPEN_ID=$EXPO_PUBLIC_OWNER_OPEN_ID
+ENV EXPO_PUBLIC_OWNER_NAME=$EXPO_PUBLIC_OWNER_NAME
+
+# Pre-generate the NativeWind CSS cache that Metro expects on disk
+# (required by forceWriteFileSystem: true in metro.config.js)
+RUN mkdir -p node_modules/react-native-css-interop/.cache && \
+    npx tailwindcss -i ./global.css -o node_modules/react-native-css-interop/.cache/web.css && \
+    npx expo export --platform web
+
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
