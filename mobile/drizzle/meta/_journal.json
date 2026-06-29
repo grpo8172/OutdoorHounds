@@ -15,6 +15,13 @@
       "when": 1751155200000,
       "tag": "0001_add_catalogue_items",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1751241600000,
+      "tag": "0002_add_listing_meta",
+      "breakpoints": true
     }
   ]
 }

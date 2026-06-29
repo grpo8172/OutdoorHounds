@@ -3,11 +3,11 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useSwipeProfiles } from "@/hooks/use-swipe-profiles";
 import { useState } from "react";
 
-type Tab = "liked" | "enquiries";
+type Tab = "saved" | "enquiries";
 
 export default function InteractionsScreen() {
-  const { likedProfiles, removeLiked } = useSwipeProfiles();
-  const [activeTab, setActiveTab] = useState<Tab>("liked");
+  const { savedListings, removeSaved } = useSwipeProfiles();
+  const [activeTab, setActiveTab] = useState<Tab>("saved");
 
   const enquiries = [
     {
@@ -33,17 +33,17 @@ export default function InteractionsScreen() {
       {/* Tab Navigation */}
       <View className="flex-row border-b border-border bg-background">
         <Pressable
-          onPress={() => setActiveTab("liked")}
+          onPress={() => setActiveTab("saved")}
           className={`flex-1 py-4 items-center border-b-2 ${
-            activeTab === "liked" ? "border-primary" : "border-transparent"
+            activeTab === "saved" ? "border-primary" : "border-transparent"
           }`}
         >
           <Text
             className={`font-semibold ${
-              activeTab === "liked" ? "text-primary" : "text-muted"
+              activeTab === "saved" ? "text-primary" : "text-muted"
             }`}
           >
-            Liked ({likedProfiles.length})
+            Saved ({savedListings.length})
           </Text>
         </Pressable>
         <Pressable
@@ -63,19 +63,19 @@ export default function InteractionsScreen() {
       </View>
 
       <ScrollView className="flex-1 px-4 py-4">
-        {activeTab === "liked" ? (
+        {activeTab === "saved" ? (
           <View className="gap-3">
-            {likedProfiles.length === 0 ? (
+            {savedListings.length === 0 ? (
               <View className="items-center justify-center py-12">
                 <Text className="text-lg text-muted">
-                  No liked profiles yet
+                  Nothing saved yet
                 </Text>
                 <Text className="text-sm text-muted mt-2">
-                  Start swiping to save profiles
+                  Tap "Save for later" on any listing to find it here
                 </Text>
               </View>
             ) : (
-              likedProfiles.map((profile) => (
+              savedListings.map((profile) => (
                 <Pressable
                   key={profile.id}
                   className="bg-surface rounded-lg overflow-hidden border border-border flex-row active:opacity-70"
@@ -100,7 +100,7 @@ export default function InteractionsScreen() {
                       </Text>
                     </View>
                     <Pressable
-                      onPress={() => removeLiked(profile.id)}
+                      onPress={() => removeSaved(profile.id)}
                       className="self-start bg-error/10 rounded px-2 py-1 mt-2 active:opacity-70"
                     >
                       <Text className="text-xs font-semibold text-error">

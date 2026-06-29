@@ -7,7 +7,7 @@
 - [x] Profile card display with image, name, and key info
 - [x] Profile detail view with image carousel
 - [ ] Enquiry/Interest submission form
-- [x] My Interactions screen (liked profiles + enquiries)
+- [x] My Interactions screen (saved listings + enquiries)
 - [x] Settings screen with filters and preferences
 - [x] Tab navigation between screens
 

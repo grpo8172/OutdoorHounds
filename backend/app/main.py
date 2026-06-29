@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 import os
 
 from app.database import engine, Base, get_db
@@ -35,9 +35,15 @@ def health_check():
 
 
 @app.get("/api/items", response_model=List[schemas.CatalogueItemResponse])
-def get_items(db: Session = Depends(get_db)):
+def get_items(
+    db: Session = Depends(get_db),
+    item_type: Optional[str] = Query(None, description="Filter by listing type"),
+):
     """Public storefront: only approved listings are visible to customers."""
-    return db.query(models.CatalogueItem).filter(models.CatalogueItem.status == "approved").all()
+    q = db.query(models.CatalogueItem).filter(models.CatalogueItem.status == "approved")
+    if item_type:
+        q = q.filter(models.CatalogueItem.item_type == item_type)
+    return q.all()
 
 
 @app.get("/api/items/pending", response_model=List[schemas.CatalogueItemResponse])

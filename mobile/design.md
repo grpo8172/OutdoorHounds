@@ -25,12 +25,12 @@ The Outdoor Hounds Club mobile app enables users to discover and connect with do
 - Card-based layout showing one profile at a time
 - Profile image (large, centered)
 - Profile name and key info (age, breed, location)
-- Quick action buttons (swipe left to pass, swipe right to like, tap for details)
+- Quick action buttons (swipe left to skip, swipe right to save, tap for details)
 - Indicator showing position in deck (e.g., "5 of 42")
 
 **Functionality:**
-- Swipe right: Save/like profile
-- Swipe left: Pass on profile
+- Swipe right: Save listing for later
+- Swipe left: Skip listing
 - Tap card: View full profile details
 - Tap info icon: Quick preview of profile details
 - Pull-to-refresh: Reload profile deck
@@ -73,15 +73,15 @@ The Outdoor Hounds Club mobile app enables users to discover and connect with do
 **Purpose:** View saved profiles and submitted enquiries.
 
 **Content:**
-- Two tabs: "Liked Profiles" and "My Enquiries"
-- List of saved profiles with images and names
+- Two tabs: "Saved Listings" and "My Enquiries"
+- List of saved listings with images and names
 - List of enquiries with status (pending, approved, rejected)
-- Ability to remove saved profiles or view enquiry details
+- Ability to remove saved listings or view enquiry details
 
 **Functionality:**
-- Tap profile to view details
+- Tap listing to view details
 - Tap enquiry to view status/response
-- Delete saved profiles
+- Remove saved listings
 - Resend enquiries
 
 ### 5. Settings Screen
@@ -103,11 +103,11 @@ The Outdoor Hounds Club mobile app enables users to discover and connect with do
 
 ## Key User Flows
 
-### Flow 1: Discover and Like a Profile
-1. User opens app → Home screen displays first profile card
-2. User swipes right or taps "Like" button
-3. Profile is saved to "My Interactions"
-4. Next profile card appears
+### Flow 1: Discover and Save a Listing
+1. User opens app → Home screen displays first listing card
+2. User swipes right or taps "Save for later"
+3. Listing is saved to "My Interactions"
+4. Next listing card appears
 
 ### Flow 2: View Profile Details and Submit Enquiry
 1. User taps on profile card → Profile Detail screen
@@ -117,10 +117,10 @@ The Outdoor Hounds Club mobile app enables users to discover and connect with do
 5. User taps "Submit" → Confirmation message
 6. Enquiry appears in "My Enquiries" tab
 
-### Flow 3: Manage Saved Profiles
+### Flow 3: Manage Saved Listings
 1. User taps "My Interactions" tab
-2. User views "Liked Profiles" tab
-3. User can tap to view full profile or swipe to delete
+2. User views "Saved Listings" tab
+3. User can tap to view full listing or remove it
 
 ---
 
@@ -168,8 +168,8 @@ The Outdoor Hounds Club mobile app enables users to discover and connect with do
 ## Interaction Patterns
 
 ### Swipe Gestures
-- **Swipe Right:** Like/save profile (visual feedback: card slides right + green checkmark)
-- **Swipe Left:** Pass on profile (visual feedback: card slides left + X icon)
+- **Swipe Right:** Save listing for later (visual feedback: card slides right + green checkmark)
+- **Swipe Left:** Skip listing (visual feedback: card slides left + X icon)
 - **Swipe Up (on detail):** Close detail view, return to discover
 - **Swipe Down (on gallery):** Exit image carousel
 

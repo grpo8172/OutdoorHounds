@@ -5,54 +5,54 @@ export interface UseSwipeProfilesReturn {
   currentProfile: Profile | null;
   currentIndex: number;
   totalProfiles: number;
-  likedProfiles: Profile[];
-  passedProfiles: Profile[];
+  savedListings: Profile[];
+  skippedListings: Profile[];
   swipeRight: () => void;
   swipeLeft: () => void;
   reset: () => void;
-  removeLiked: (id: string) => void;
+  removeSaved: (id: string) => void;
 }
 
 export function useSwipeProfiles(): UseSwipeProfilesReturn {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [likedProfiles, setLikedProfiles] = useState<Profile[]>([]);
-  const [passedProfiles, setPassedProfiles] = useState<Profile[]>([]);
+  const [savedListings, setSavedListings] = useState<Profile[]>([]);
+  const [skippedListings, setSkippedListings] = useState<Profile[]>([]);
 
   const currentProfile = mockProfiles[currentIndex] || null;
 
   const swipeRight = useCallback(() => {
     if (currentProfile) {
-      setLikedProfiles((prev) => [...prev, currentProfile]);
+      setSavedListings((prev) => [...prev, currentProfile]);
     }
     setCurrentIndex((prev) => prev + 1);
   }, [currentProfile]);
 
   const swipeLeft = useCallback(() => {
     if (currentProfile) {
-      setPassedProfiles((prev) => [...prev, currentProfile]);
+      setSkippedListings((prev) => [...prev, currentProfile]);
     }
     setCurrentIndex((prev) => prev + 1);
   }, [currentProfile]);
 
   const reset = useCallback(() => {
     setCurrentIndex(0);
-    setLikedProfiles([]);
-    setPassedProfiles([]);
+    setSavedListings([]);
+    setSkippedListings([]);
   }, []);
 
-  const removeLiked = useCallback((id: string) => {
-    setLikedProfiles((prev) => prev.filter((p) => p.id !== id));
+  const removeSaved = useCallback((id: string) => {
+    setSavedListings((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
   return {
     currentProfile,
     currentIndex,
     totalProfiles: mockProfiles.length,
-    likedProfiles,
-    passedProfiles,
+    savedListings,
+    skippedListings,
     swipeRight,
     swipeLeft,
     reset,
-    removeLiked,
+    removeSaved,
   };
 }

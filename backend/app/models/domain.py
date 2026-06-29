@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Enum, JSON
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -27,6 +27,7 @@ class CatalogueItem(Base):
     price = Column(String(64), nullable=True)
     image_url = Column(String(512), nullable=True)
     status = Column(String(32), default="draft")
+    listing_meta = Column(JSON, nullable=True)
 
 class Enquiry(Base):
     __tablename__ = "web_enquiries"

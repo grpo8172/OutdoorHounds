@@ -1,6 +1,8 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
+
+VALID_ITEM_TYPES = {"pet", "hike", "service", "petting_zoo_booking"}
 
 class CatalogueItemBase(BaseModel):
     item_type: str
@@ -8,6 +10,7 @@ class CatalogueItemBase(BaseModel):
     description: str
     price: Optional[str] = None
     image_url: Optional[str] = None
+    listing_meta: Optional[dict] = None
 
 class CatalogueItemCreate(CatalogueItemBase):
     pass
@@ -15,7 +18,7 @@ class CatalogueItemCreate(CatalogueItemBase):
 class CatalogueItemResponse(CatalogueItemBase):
     id: int
     status: str
-    
+
     class Config:
         from_attributes = True
 

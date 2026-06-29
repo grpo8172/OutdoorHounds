@@ -94,13 +94,13 @@ export function ProfileCard({
             onPress={onSwipeLeft}
             className="flex-1 bg-error/10 rounded-lg py-2 items-center active:opacity-70"
           >
-            <Text className="text-error font-semibold">✕ Pass</Text>
+            <Text className="text-error font-semibold">Skip</Text>
           </Pressable>
           <Pressable
             onPress={onSwipeRight}
             className="flex-1 bg-success/10 rounded-lg py-2 items-center active:opacity-70"
           >
-            <Text className="text-success font-semibold">♥ Like</Text>
+            <Text className="text-success font-semibold">Save for later</Text>
           </Pressable>
         </View>
       </View>

@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -33,6 +33,7 @@ export const catalogueItems = mysqlTable("catalogue_items", {
   price: varchar("price", { length: 64 }),
   imageUrl: varchar("image_url", { length: 512 }),
   status: mysqlEnum("status", ["draft", "pending_review", "approved"]).default("draft").notNull(),
+  listingMeta: json("listing_meta"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

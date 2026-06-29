@@ -9,7 +9,7 @@ export default function HomeScreen() {
     currentProfile,
     currentIndex,
     totalProfiles,
-    likedProfiles,
+    savedListings,
     swipeRight,
     swipeLeft,
     reset,
@@ -81,9 +81,9 @@ export default function HomeScreen() {
           <View className="flex-row justify-between bg-surface rounded-lg p-4 border border-border">
             <View className="items-center">
               <Text className="text-2xl font-bold text-primary">
-                {likedProfiles.length}
+                {savedListings.length}
               </Text>
-              <Text className="text-xs text-muted">Liked</Text>
+              <Text className="text-xs text-muted">Saved</Text>
             </View>
             <View className="items-center">
               <Text className="text-2xl font-bold text-foreground">
