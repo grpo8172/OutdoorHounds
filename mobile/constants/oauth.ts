@@ -1,4 +1,5 @@
 import * as Linking from "expo-linking";
+import { Alert } from "react-native";
 import * as ReactNative from "react-native";
 
 // Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
@@ -8,44 +9,23 @@ const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
 const schemeFromBundleId = `manus${timestamp}`;
 
 const env = {
-  portal: process.env.EXPO_PUBLIC_OAUTH_PORTAL_URL ?? "",
-  server: process.env.EXPO_PUBLIC_OAUTH_SERVER_URL ?? "",
-  appId: process.env.EXPO_PUBLIC_APP_ID ?? "",
-  ownerId: process.env.EXPO_PUBLIC_OWNER_OPEN_ID ?? "",
-  ownerName: process.env.EXPO_PUBLIC_OWNER_NAME ?? "",
+  googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "",
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "",
   deepLinkScheme: schemeFromBundleId,
 };
 
-export const OAUTH_PORTAL_URL = env.portal;
-export const OAUTH_SERVER_URL = env.server;
-export const APP_ID = env.appId;
-export const OWNER_OPEN_ID = env.ownerId;
-export const OWNER_NAME = env.ownerName;
+export const DEEP_LINK_SCHEME = env.deepLinkScheme;
 export const API_BASE_URL = env.apiBaseUrl;
 
 /**
- * Get the API base URL, deriving from current hostname if not set.
- * Metro runs on 8081, API server runs on 3000.
- * URL pattern: https://PORT-sandboxid.region.domain
+ * Get the API base URL.
+ * On web, returns "" (relative URL) so nginx proxies /api requests to the API
+ * server same-origin — this is required for auth cookies to work without HTTPS.
  */
 export function getApiBaseUrl(): string {
-  // If API_BASE_URL is set, use it
   if (API_BASE_URL) {
     return API_BASE_URL.replace(/\/$/, "");
   }
-
-  // On web, derive from current hostname by replacing port 8081 with 3000
-  if (ReactNative.Platform.OS === "web" && typeof window !== "undefined" && window.location) {
-    const { protocol, hostname } = window.location;
-    // Pattern: 8081-sandboxid.region.domain -> 3000-sandboxid.region.domain
-    const apiHostname = hostname.replace(/^8081-/, "3000-");
-    if (apiHostname !== hostname) {
-      return `${protocol}//${apiHostname}`;
-    }
-  }
-
-  // Fallback to empty (will use relative URL)
   return "";
 }
 
@@ -64,29 +44,31 @@ const encodeState = (value: string) => {
 };
 
 /**
- * Get the redirect URI for OAuth callback.
- * - Web: uses API server callback endpoint
- * - Native: uses deep link scheme
+ * Where Google should send the browser/app back to after the user approves
+ * or cancels sign-in. This travels inside `state`, not as the OAuth
+ * redirect_uri (Google's redirect_uri is always the fixed server callback —
+ * see getGoogleAuthUrl below).
  */
-export const getRedirectUri = () => {
+function getReturnTo(): string {
   if (ReactNative.Platform.OS === "web") {
-    return `${getApiBaseUrl()}/api/oauth/callback`;
-  } else {
-    return Linking.createURL("/oauth/callback", {
-      scheme: env.deepLinkScheme,
-    });
+    return typeof window !== "undefined" ? window.location.origin : "";
   }
-};
+  return Linking.createURL("/oauth/callback", {
+    scheme: env.deepLinkScheme,
+  });
+}
 
-export const getLoginUrl = () => {
-  const redirectUri = getRedirectUri();
-  const state = encodeState(redirectUri);
+export const getGoogleAuthUrl = () => {
+  const platform = ReactNative.Platform.OS === "web" ? "web" : "native";
+  const state = encodeState(JSON.stringify({ returnTo: getReturnTo(), platform }));
 
-  const url = new URL(`${OAUTH_PORTAL_URL}/app-auth`);
-  url.searchParams.set("appId", APP_ID);
-  url.searchParams.set("redirectUri", redirectUri);
+  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  url.searchParams.set("client_id", env.googleClientId);
+  url.searchParams.set("redirect_uri", `${getApiBaseUrl()}/api/oauth/google/callback`);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("scope", "openid email profile");
   url.searchParams.set("state", state);
-  url.searchParams.set("type", "signIn");
+  url.searchParams.set("prompt", "select_account");
 
   return url.toString();
 };
@@ -102,7 +84,23 @@ export const getLoginUrl = () => {
  * @returns Always null, the callback is handled via deep link.
  */
 export async function startOAuthLogin(): Promise<string | null> {
-  const loginUrl = getLoginUrl();
+  if (!env.googleClientId) {
+    if (__DEV__) {
+      console.warn("[OAuth] EXPO_PUBLIC_GOOGLE_CLIENT_ID is not set — OAuth will fail");
+      console.log("[OAuth] API base URL:", getApiBaseUrl() || "(empty — relative URL will be used)");
+    }
+    Alert.alert(
+      "Sign-in not configured",
+      "Google Sign-In isn't set up in this environment. Use 'Continue as test user' to sign in for testing.",
+    );
+    return null;
+  }
+
+  const loginUrl = getGoogleAuthUrl();
+
+  if (__DEV__) {
+    console.log("[OAuth] startOAuthLogin:", { loginUrl, apiBaseUrl: getApiBaseUrl() });
+  }
 
   if (ReactNative.Platform.OS === "web") {
     // On web, just redirect
@@ -115,7 +113,6 @@ export async function startOAuthLogin(): Promise<string | null> {
   const supported = await Linking.canOpenURL(loginUrl);
   if (!supported) {
     console.warn("[OAuth] Cannot open login URL: URL scheme not supported");
-    // 可考虑抛出错误或返回错误状态，让调用方处理
     return null;
   }
 
@@ -123,7 +120,6 @@ export async function startOAuthLogin(): Promise<string | null> {
     await Linking.openURL(loginUrl);
   } catch (error) {
     console.error("[OAuth] Failed to open login URL:", error);
-    // 可考虑抛出错误让调用方处理
   }
 
   // The OAuth callback will reopen the app via deep link.

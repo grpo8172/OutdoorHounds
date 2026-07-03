@@ -1,6 +1,13 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertProfile, Profile, users, profiles } from "../drizzle/schema";
+import {
+  InsertUser,
+  InsertProfile,
+  Profile,
+  users,
+  profiles,
+  subscriptions,
+} from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -84,7 +91,11 @@ export async function getUserByOpenId(openId: string) {
     return undefined;
   }
 
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.openId, openId))
+    .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
 }
@@ -117,15 +128,71 @@ export async function getOrCreateProfile(
   }
 }
 
-export async function getProfileByUserId(userId: number): Promise<Profile | undefined> {
+export async function getProfileByUserId(
+  userId: number,
+): Promise<Profile | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
+  const result = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.userId, userId))
+    .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function updateProfile(userId: number, data: Partial<InsertProfile>): Promise<void> {
+export async function updateProfile(
+  userId: number,
+  data: Partial<InsertProfile>,
+): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(profiles).set(data).where(eq(profiles.userId, userId));
+}
+
+// Called only after the PayPal Orders API capture has been verified
+// server-side (status === "COMPLETED") — see server/_core/paypal.ts.
+export async function recordVerifiedPayment(
+  userId: number,
+  amountCents: number,
+  currency: string,
+  transactionId: string,
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(subscriptions).values({
+    userId,
+    amountCents,
+    currency,
+    transactionId,
+    status: "active",
+  });
+}
+
+// Guards against double-recording if a client retries captureOrder for the
+// same PayPal capture (e.g. after a dropped response).
+export async function hasSubscriptionForTransaction(
+  transactionId: string,
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db
+    .select({ id: subscriptions.id })
+    .from(subscriptions)
+    .where(eq(subscriptions.transactionId, transactionId))
+    .limit(1);
+  return result.length > 0;
+}
+
+export async function hasActiveSubscription(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db
+    .select({ id: subscriptions.id })
+    .from(subscriptions)
+    .where(
+      and(eq(subscriptions.userId, userId), eq(subscriptions.status, "active")),
+    )
+    .limit(1);
+  return result.length > 0;
 }

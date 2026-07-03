@@ -12,5 +12,8 @@ RUN pnpm build
 
 EXPOSE 3000
 
-# Run migrations then start the server
-CMD ["sh", "-c", "pnpm exec drizzle-kit migrate && node dist/index.js"]
+# Run migrations then start the server. Retry the migrate step since the DB
+# healthcheck can report ready slightly before mysqld is actually accepting
+# connections on a cold volume (depends_on: condition: service_healthy alone
+# isn't enough).
+CMD ["sh", "-c", "until pnpm exec drizzle-kit migrate; do echo 'Waiting for MySQL...'; sleep 3; done; node dist/index.js"]

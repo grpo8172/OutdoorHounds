@@ -1,4 +1,12 @@
-import { int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import {
+  int,
+  json,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  varchar,
+} from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -11,7 +19,7 @@ export const users = mysqlTable("users", {
    * Use this for relations between tables.
    */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
+  /** Google OAuth `sub` claim, used as the stable per-user identifier. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -27,12 +35,16 @@ export type InsertUser = typeof users.$inferInsert;
 
 export const catalogueItems = mysqlTable("catalogue_items", {
   id: int("id").autoincrement().primaryKey(),
+  // Null for legacy/admin-seeded listings created before ownership was tracked.
+  userId: int("user_id"),
   itemType: varchar("item_type", { length: 32 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description").notNull(),
   price: varchar("price", { length: 64 }),
   imageUrl: varchar("image_url", { length: 512 }),
-  status: mysqlEnum("status", ["draft", "pending_review", "approved"]).default("draft").notNull(),
+  status: mysqlEnum("status", ["draft", "pending_review", "approved"])
+    .default("draft")
+    .notNull(),
   listingMeta: json("listing_meta"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
@@ -45,7 +57,9 @@ export const profiles = mysqlTable("profiles", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("user_id").notNull().unique(),
   displayName: varchar("display_name", { length: 255 }),
-  profileType: varchar("profile_type", { length: 64 }).notNull().default("individual"),
+  profileType: varchar("profile_type", { length: 64 })
+    .notNull()
+    .default("individual"),
   location: varchar("location", { length: 255 }),
   contactEmail: varchar("contact_email", { length: 320 }),
   contactPhone: varchar("contact_phone", { length: 64 }),
@@ -58,3 +72,35 @@ export const profiles = mysqlTable("profiles", {
 
 export type Profile = typeof profiles.$inferSelect;
 export type InsertProfile = typeof profiles.$inferInsert;
+
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  // Row is only inserted after the PayPal Orders API capture is verified
+  // server-side (see server/_core/paypal.ts + server/subscriptions.ts).
+  // "refunded" is set manually (e.g. in the DB) if you process a refund in
+  // the PayPal dashboard.
+  status: mysqlEnum("status", ["active", "refunded"])
+    .default("active")
+    .notNull(),
+  amountCents: int("amount_cents").notNull().default(1000),
+  currency: varchar("currency", { length: 8 }).notNull().default("USD"),
+  // PayPal capture ID returned by the Orders API capture call. Unique per
+  // payment — used to guard against double-recording the same capture.
+  transactionId: varchar("transaction_id", { length: 64 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+export const swipes = mysqlTable("swipes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  catalogueItemId: int("catalogue_item_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Swipe = typeof swipes.$inferSelect;
+export type InsertSwipe = typeof swipes.$inferInsert;

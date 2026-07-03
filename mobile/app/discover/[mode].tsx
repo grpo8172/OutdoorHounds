@@ -1,5 +1,5 @@
 import { ScrollView, Text, View, Pressable, RefreshControl, ActivityIndicator } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { ProfileCard } from "@/components/profile-card";
@@ -8,7 +8,6 @@ import { AppMode } from "@/lib/mockData";
 import { MODES } from "@/lib/modes";
 
 export default function DiscoverScreen() {
-  const router = useRouter();
   const { mode: modeParam } = useLocalSearchParams<{ mode: string }>();
   const modeConfig = MODES.find((m) => m.id === modeParam);
 
@@ -29,12 +28,6 @@ export default function DiscoverScreen() {
     return (
       <ScreenContainer className="p-6 items-center justify-center">
         <Text className="text-lg text-foreground">Unknown category</Text>
-        <Pressable
-          onPress={() => router.back()}
-          className="mt-4 bg-primary rounded-lg px-6 py-3 active:opacity-80"
-        >
-          <Text className="text-background font-semibold">Go Back</Text>
-        </Pressable>
       </ScreenContainer>
     );
   }
@@ -53,9 +46,6 @@ export default function DiscoverScreen() {
       <ScreenContainer className="items-center justify-center gap-3">
         <ActivityIndicator size="large" color="#0a7ea4" />
         <Text className="text-sm text-muted">Loading {modeConfig.title.toLowerCase()}...</Text>
-        <Pressable onPress={() => router.back()} className="mt-4 active:opacity-70">
-          <Text className="text-xs text-muted">← Back</Text>
-        </Pressable>
       </ScreenContainer>
     );
   }
@@ -72,12 +62,10 @@ export default function DiscoverScreen() {
           </Text>
           <Pressable
             onPress={reset}
-            className="bg-primary rounded-lg px-6 py-3 mt-2 active:opacity-80"
+            className="rounded-lg px-6 py-3 mt-2 active:opacity-80"
+            style={{ backgroundColor: "#e8843c" }}
           >
-            <Text className="text-background font-semibold">Start Over</Text>
-          </Pressable>
-          <Pressable onPress={() => router.back()} className="active:opacity-70 mt-1">
-            <Text className="text-muted text-sm">← Switch mode</Text>
+            <Text className="font-semibold" style={{ color: "#a8d4b8" }}>Start Over</Text>
           </Pressable>
         </View>
       </ScreenContainer>
@@ -100,12 +88,6 @@ export default function DiscoverScreen() {
               </Text>
               <Text className="text-sm text-muted">{modeConfig.subtitle}</Text>
             </View>
-            <Pressable
-              onPress={() => router.back()}
-              className="bg-surface border border-border rounded-full px-3 py-1.5 active:opacity-70"
-            >
-              <Text className="text-xs text-muted font-medium">Switch</Text>
-            </Pressable>
           </View>
 
           {/* Profile Card */}

@@ -1,8 +1,9 @@
 import { and, eq, inArray } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { catalogueItems } from "../drizzle/schema";
-import { getDb } from "./db";
-import { adminProcedure, publicProcedure, router } from "./_core/trpc";
+import { getDb, getProfileByUserId, hasActiveSubscription } from "./db";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 
 const ITEM_TYPES = [
   "pet",
@@ -105,18 +106,23 @@ export const itemsRouter = router({
         listingMeta: listingMetaSchema,
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      await db.insert(catalogueItems).values({ ...input, status: "pending_review" });
+      await db
+        .insert(catalogueItems)
+        .values({ ...input, userId: ctx.user.id, status: "pending_review" });
       return { success: true };
     }),
 
   /**
-   * Public submission — appears immediately in the swipe feed (status: approved).
-   * Stores mode-specific detail fields inside listingMeta JSON.
+   * Submission by a paying, onboarded user — appears immediately in the swipe
+   * feed (status: approved). Stores mode-specific detail fields inside
+   * listingMeta JSON. Requires a completed profile and an active unlock
+   * payment; both are re-checked here since the client-side gate on
+   * /create-listing can't be trusted on its own.
    */
-  submit: publicProcedure
+  submit: protectedProcedure
     .input(
       z.object({
         mode: z.enum([
@@ -137,7 +143,23 @@ export const itemsRouter = router({
         contact: z.string().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const profile = await getProfileByUserId(ctx.user.id);
+      if (!profile?.displayName) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Complete your profile before creating a listing.",
+        });
+      }
+
+      const unlocked = await hasActiveSubscription(ctx.user.id);
+      if (!unlocked) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Unlock Outdoor Hounds to create listings.",
+        });
+      }
+
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -145,6 +167,7 @@ export const itemsRouter = router({
 
       await db.insert(catalogueItems).values({
         ...rest,
+        userId: ctx.user.id,
         itemType: MODE_TO_ITEM_TYPE[mode],
         imageUrl: imageUrl || undefined,
         listingMeta: {

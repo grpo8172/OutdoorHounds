@@ -53,7 +53,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: "3000"
       DATABASE_URL: mysql://app:apppassword@db:3306/outdoor_hounds
       JWT_SECRET: change-me-in-production
@@ -62,6 +62,9 @@ services:
       OWNER_OPEN_ID: ""
       BUILT_IN_FORGE_API_URL: ""
       BUILT_IN_FORGE_API_KEY: ""
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
+      PAYPAL_API_BASE: ${PAYPAL_API_BASE:-https://api-m.sandbox.paypal.com}
     depends_on:
       db:
         condition: service_healthy
@@ -74,12 +77,13 @@ services:
       context: ./mobile
       dockerfile: Dockerfile.web
       args:
-        EXPO_PUBLIC_API_BASE_URL: http://localhost:3000
+        EXPO_PUBLIC_API_BASE_URL: ""
         EXPO_PUBLIC_APP_ID: ""
         EXPO_PUBLIC_OAUTH_SERVER_URL: ""
         EXPO_PUBLIC_OAUTH_PORTAL_URL: ""
         EXPO_PUBLIC_OWNER_OPEN_ID: ""
         EXPO_PUBLIC_OWNER_NAME: ""
+        EXPO_PUBLIC_DEV_LOGIN_ENABLED: "true"
     ports:
       - "8081:80"
     depends_on:

@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, Pressable, TextInput, Alert } from "react-native";
+import { ScrollView, Text, View, Pressable, TextInput } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { router } from "expo-router";
@@ -33,10 +33,11 @@ export default function OnboardingScreen() {
   const [location, setLocation] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
 
   const updateProfile = trpc.profiles.updateMyProfile.useMutation({
-    onSuccess: () => router.replace("/(tabs)"),
-    onError: (err) => Alert.alert("Error", err.message),
+    onSuccess: () => router.replace("/"),
+    onError: (err) => setFormError(err.message),
   });
 
   function toggleMode(mode: BrowsingModeValue) {
@@ -46,8 +47,9 @@ export default function OnboardingScreen() {
   }
 
   function handleSubmit() {
+    setFormError(null);
     if (!displayName.trim()) {
-      Alert.alert("Display name required", "Please enter a name so others can recognise you.");
+      setFormError("Please enter a display name before continuing.");
       return;
     }
     updateProfile.mutate({
@@ -89,25 +91,46 @@ export default function OnboardingScreen() {
           <View className="gap-2">
             <Text className="text-sm font-semibold text-foreground">I am a…</Text>
             <View className="gap-2">
-              {PROFILE_TYPES.map((pt) => (
-                <Pressable
-                  key={pt.value}
-                  onPress={() => setProfileType(pt.value)}
-                  className={`rounded-lg px-4 py-3 border ${
-                    profileType === pt.value
-                      ? "bg-primary border-primary"
-                      : "bg-surface border-border"
-                  } active:opacity-70`}
-                >
-                  <Text
-                    className={`font-medium ${
-                      profileType === pt.value ? "text-background" : "text-foreground"
-                    }`}
+              {PROFILE_TYPES.map((pt) => {
+                const selected = profileType === pt.value;
+                return (
+                  <Pressable
+                    key={pt.value}
+                    onPress={() => setProfileType(pt.value)}
+                    style={{
+                      borderRadius: 8,
+                      paddingHorizontal: 16,
+                      paddingVertical: 13,
+                      borderWidth: 2,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: selected ? '#e8843c' : undefined,
+                      borderColor: selected ? '#e8843c' : '#9BA1A6',
+                      opacity: 1,
+                    }}
+                    className="bg-surface active:opacity-70"
                   >
-                    {pt.label}
-                  </Text>
-                </Pressable>
-              ))}
+                    <Text style={{ fontWeight: '500', fontSize: 15, color: selected ? '#ffffff' : undefined }} className="text-foreground">
+                      {pt.label}
+                    </Text>
+                    {/* Radio indicator */}
+                    <View style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      borderWidth: 2,
+                      borderColor: selected ? 'rgba(255,255,255,0.8)' : '#9BA1A6',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      {selected && (
+                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#ffffff' }} />
+                      )}
+                    </View>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
 
@@ -123,20 +146,33 @@ export default function OnboardingScreen() {
                   <Pressable
                     key={mode.value}
                     onPress={() => toggleMode(mode.value)}
-                    className={`rounded-lg px-4 py-3 border flex-row items-center gap-3 ${
-                      active ? "bg-primary/10 border-primary" : "bg-surface border-border"
-                    } active:opacity-70`}
+                    style={{
+                      borderRadius: 8,
+                      paddingHorizontal: 16,
+                      paddingVertical: 13,
+                      borderWidth: 2,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      borderColor: active ? '#e8843c' : '#9BA1A6',
+                    }}
+                    className={`${active ? 'bg-primary/10' : 'bg-surface'} active:opacity-70`}
                   >
-                    <View
-                      className={`w-5 h-5 rounded border-2 items-center justify-center ${
-                        active ? "bg-primary border-primary" : "border-border"
-                      }`}
-                    >
-                      {active && <Text className="text-background text-xs font-bold">✓</Text>}
+                    {/* Checkbox */}
+                    <View style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 4,
+                      borderWidth: 2,
+                      borderColor: active ? '#e8843c' : '#9BA1A6',
+                      backgroundColor: active ? '#e8843c' : 'transparent',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      {active && <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700', lineHeight: 14 }}>✓</Text>}
                     </View>
-                    <Text
-                      className={`font-medium ${active ? "text-primary" : "text-foreground"}`}
-                    >
+                    <Text style={{ fontWeight: '500', fontSize: 15, flex: 1 }} className={active ? 'text-primary' : 'text-foreground'}>
                       {mode.label}
                     </Text>
                   </Pressable>
@@ -184,13 +220,21 @@ export default function OnboardingScreen() {
             />
           </View>
 
+          {/* Inline error */}
+          {formError && (
+            <View style={{ backgroundColor: '#fee2e2', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#fca5a5' }}>
+              <Text style={{ color: '#b91c1c', fontSize: 14 }}>{formError}</Text>
+            </View>
+          )}
+
           {/* Submit */}
           <Pressable
             onPress={handleSubmit}
             disabled={updateProfile.isPending}
-            className="bg-primary rounded-lg py-4 items-center mt-2 active:opacity-80"
+            style={{ backgroundColor: '#e8843c', borderRadius: 8, paddingVertical: 16, alignItems: 'center', marginTop: 8 }}
+            className="active:opacity-80"
           >
-            <Text className="text-background font-semibold text-base">
+            <Text style={{ color: '#ffffff', fontWeight: '600', fontSize: 16 }}>
               {updateProfile.isPending ? "Saving…" : "Get started"}
             </Text>
           </Pressable>

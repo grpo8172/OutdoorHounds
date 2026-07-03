@@ -6,15 +6,18 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
+import { useAuth } from "@/hooks/use-auth";
+import { startOAuthLogin } from "@/constants/oauth";
 import { trpc } from "@/lib/trpc";
 import { AppMode } from "@/lib/mockData";
 import { MODES, MODE_FIELDS } from "@/lib/modes";
+import { UNLOCK_PRICE_LABEL } from "@shared/const";
+import { showAlert } from "@/lib/alert";
 
 const EMPTY_FORM = {
   mode: "" as AppMode | "",
@@ -78,8 +81,161 @@ function Input({
   );
 }
 
+const isDevLoginEnabled = __DEV__ || process.env.EXPO_PUBLIC_DEV_LOGIN_ENABLED === 'true';
+
+function GateScreen({
+  title,
+  description,
+  ctaLabel,
+  onPress,
+  devOnPress,
+  devError,
+}: {
+  title: string;
+  description: string;
+  ctaLabel: string;
+  onPress: () => void;
+  devOnPress?: () => void;
+  devError?: string | null;
+}) {
+  return (
+    <ScreenContainer className="p-6 items-center justify-center">
+      <View style={{ alignItems: 'center', gap: 16, maxWidth: 320, width: '100%' }}>
+        <Text style={{ fontSize: 48 }}>🔒</Text>
+        <Text className="text-2xl font-bold text-foreground text-center">{title}</Text>
+        <Text className="text-base text-muted text-center">{description}</Text>
+        <Pressable
+          onPress={onPress}
+          style={{
+            backgroundColor: '#e8843c',
+            borderRadius: 12,
+            paddingVertical: 14,
+            paddingHorizontal: 24,
+            alignItems: 'center',
+            width: '100%',
+            marginTop: 8,
+          }}
+        >
+          <Text style={{ color: '#ffffff', fontWeight: '600', fontSize: 16 }}>
+            {ctaLabel}
+          </Text>
+        </Pressable>
+        {isDevLoginEnabled && devOnPress && (
+          <Pressable
+            onPress={devOnPress}
+            style={{
+              borderRadius: 12,
+              paddingVertical: 12,
+              paddingHorizontal: 24,
+              alignItems: 'center',
+              width: '100%',
+              borderWidth: 1,
+              borderColor: '#7a6a58',
+            }}
+          >
+            <Text style={{ color: '#7a6a58', fontWeight: '500', fontSize: 14 }}>
+              Continue as test user (dev only)
+            </Text>
+          </Pressable>
+        )}
+        {devError && (
+          <View style={{ backgroundColor: '#fee2e2', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#fca5a5', width: '100%' }}>
+            <Text style={{ color: '#b91c1c', fontSize: 14 }}>{devError}</Text>
+          </View>
+        )}
+      </View>
+    </ScreenContainer>
+  );
+}
+
 export default function CreateListingScreen() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading, devLogin } = useAuth();
+  const [devLoginError, setDevLoginError] = useState<string | null>(null);
+
+  const handleDevLogin = async () => {
+    setDevLoginError(null);
+    try {
+      await devLogin();
+    } catch (err) {
+      setDevLoginError(err instanceof Error ? err.message : "Dev login failed. Please try again.");
+    }
+  };
+
+  const profileQuery = trpc.profiles.getMyProfile.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const hasProfile = !!profileQuery.data?.displayName;
+
+  const subscriptionQuery = trpc.subscriptions.getStatus.useQuery(undefined, {
+    enabled: isAuthenticated && hasProfile,
+  });
+  // In dev mode, bypass the subscription requirement so testers can exercise the full form
+  const isUnlocked = isDevLoginEnabled || (subscriptionQuery.data?.active ?? false);
+
+  if (authLoading) {
+    return (
+      <ScreenContainer className="items-center justify-center">
+        <ActivityIndicator />
+      </ScreenContainer>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <GateScreen
+        title="Sign in to create a listing"
+        description="You can browse and swipe without an account, but creating a listing needs you to be signed in."
+        ctaLabel="Sign in with Google"
+        onPress={() => startOAuthLogin()}
+        devOnPress={handleDevLogin}
+        devError={devLoginError}
+      />
+    );
+  }
+
+  if (profileQuery.isLoading) {
+    return (
+      <ScreenContainer className="items-center justify-center">
+        <ActivityIndicator />
+      </ScreenContainer>
+    );
+  }
+
+  if (!hasProfile) {
+    return (
+      <GateScreen
+        title="Complete your profile"
+        description="Set up your profile before creating a listing so people know who they're dealing with."
+        ctaLabel="Complete Profile"
+        onPress={() => router.push("/onboarding")}
+      />
+    );
+  }
+
+  if (!isDevLoginEnabled && subscriptionQuery.isLoading) {
+    return (
+      <ScreenContainer className="items-center justify-center">
+        <ActivityIndicator />
+      </ScreenContainer>
+    );
+  }
+
+  if (!isUnlocked) {
+    return (
+      <GateScreen
+        title="Unlock Outdoor Hounds"
+        description={`A one-time ${UNLOCK_PRICE_LABEL} payment unlocks unlimited listings — no subscription, no renewals.`}
+        ctaLabel={`Unlock for ${UNLOCK_PRICE_LABEL}`}
+        onPress={() => router.push("/subscribe")}
+      />
+    );
+  }
+
+  return <ListingForm />;
+}
+
+function ListingForm() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitted, setSubmitted] = useState(false);
 
@@ -88,12 +244,21 @@ export default function CreateListingScreen() {
 
   const submitMutation = trpc.items.submit.useMutation({
     onSuccess: () => setSubmitted(true),
-    onError: (err) => Alert.alert("Submission failed", err.message || "Please try again."),
+    onError: (err) => showAlert("Submission failed", err.message || "Please try again."),
   });
 
   const selectedMode = form.mode as AppMode | "";
   const modeFields = selectedMode ? MODE_FIELDS[selectedMode] : null;
-  const isValid = !!selectedMode && form.name.trim() && form.description.trim();
+  const missingFields = [
+    !selectedMode && "a category",
+    !form.name.trim() && "a title",
+    !form.description.trim() && "a description",
+  ].filter((field): field is string => !!field);
+  const isValid = missingFields.length === 0;
+  const missingFieldsMessage =
+    missingFields.length === 1
+      ? missingFields[0]
+      : `${missingFields.slice(0, -1).join(", ")} and ${missingFields[missingFields.length - 1]}`;
 
   const handleSubmit = () => {
     if (!isValid) return;
@@ -124,12 +289,10 @@ export default function CreateListingScreen() {
           </Text>
           <Pressable
             onPress={() => { setForm(EMPTY_FORM); setSubmitted(false); }}
-            className="bg-primary rounded-xl px-6 py-3 mt-2 active:opacity-80"
+            className="rounded-xl px-6 py-3 mt-2 active:opacity-80"
+            style={{ backgroundColor: "#e8843c" }}
           >
-            <Text className="text-background font-semibold">Add Another</Text>
-          </Pressable>
-          <Pressable onPress={() => router.back()} className="active:opacity-70">
-            <Text className="text-muted text-sm">← Back to home</Text>
+            <Text className="font-semibold" style={{ color: "#a8d4b8" }}>Add Another</Text>
           </Pressable>
         </View>
       </ScreenContainer>
@@ -149,9 +312,6 @@ export default function CreateListingScreen() {
         >
           {/* Header */}
           <View className="flex-row items-center gap-3 mb-6">
-            <Pressable onPress={() => router.back()} className="active:opacity-70">
-              <Text className="text-primary text-base">← Back</Text>
-            </Pressable>
             <View className="flex-1">
               <Text className="text-2xl font-bold text-foreground">Add a Listing</Text>
               <Text className="text-xs text-muted">Goes live immediately in the public feed</Text>
@@ -160,6 +320,7 @@ export default function CreateListingScreen() {
 
           {/* Category */}
           <Field label="Category" required>
+            <Text className="text-xs text-muted mb-2 -mt-1">Tap one to select</Text>
             <View className="flex-row flex-wrap gap-2">
               {MODES.map((mode) => {
                 const selected = form.mode === mode.id;
@@ -167,14 +328,15 @@ export default function CreateListingScreen() {
                   <Pressable
                     key={mode.id}
                     onPress={() => setForm((f) => ({ ...f, mode: mode.id }))}
-                    className={`rounded-full px-4 py-2 border active:opacity-70 ${
-                      selected ? "bg-primary border-primary" : "bg-surface border-border"
-                    }`}
+                    className="rounded-full px-4 py-2 border active:opacity-70"
+                    style={{
+                      backgroundColor: selected ? "#e8843c" : "#ffffff",
+                      borderColor: selected ? "#e8843c" : "#ddd5c4",
+                    }}
                   >
                     <Text
-                      className={`text-sm font-medium ${
-                        selected ? "text-background" : "text-foreground"
-                      }`}
+                      className="text-sm font-medium"
+                      style={{ color: selected ? "#a8d4b8" : "#2c2c2c" }}
                     >
                       {mode.emoji} {mode.title}
                     </Text>
@@ -285,17 +447,17 @@ export default function CreateListingScreen() {
           <Pressable
             onPress={handleSubmit}
             disabled={!isValid || submitMutation.isPending}
-            className={`rounded-xl py-4 items-center active:opacity-80 mt-2 ${
-              isValid ? "bg-primary" : "bg-muted/30"
-            }`}
+            className="rounded-xl py-4 items-center active:opacity-80 mt-2"
+            style={{
+              backgroundColor: isValid ? "#e8843c" : "rgba(122, 106, 88, 0.3)",
+            }}
           >
             {submitMutation.isPending ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text
-                className={`font-semibold text-base ${
-                  isValid ? "text-background" : "text-muted"
-                }`}
+                className="font-semibold text-base"
+                style={{ color: isValid ? "#a8d4b8" : "#7a6a58" }}
               >
                 Publish Listing
               </Text>
@@ -304,7 +466,7 @@ export default function CreateListingScreen() {
 
           {!isValid && (
             <Text className="text-center text-xs text-muted mt-3">
-              Fill in category, title, and description to publish
+              Add {missingFieldsMessage} to publish
             </Text>
           )}
         </ScrollView>

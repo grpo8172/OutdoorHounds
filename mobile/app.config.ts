@@ -26,6 +26,16 @@ const bundleId =
 const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
 const schemeFromBundleId = `manus${timestamp}`;
 
+// When the dev server is reached through a public tunnel domain (e.g.
+// Google Cloud Shell's https://8081-xxx.cloudshell.dev preview URLs, or
+// Gitpod/Codespaces), Expo's dev-server CORS middleware rejects the
+// browser's Origin header with "Unauthorized request" unless it matches
+// `extra.router.origin` — it only trusts localhost/loopback by default.
+// Set EXPO_PACKAGER_PROXY_URL (or EXPO_WEB_PREVIEW_URL) in .env to the
+// externally-visible URL for port 8081 to allow it through.
+const publicOrigin =
+  process.env.EXPO_PACKAGER_PROXY_URL || process.env.EXPO_WEB_PREVIEW_URL;
+
 const env = {
   // App branding - update these values directly (do not use env vars)
   appName: "Outdoor Hounds",
@@ -82,9 +92,17 @@ const config: ExpoConfig = {
   },
   web: {
     bundler: "metro",
-    output: "static",
+    // "static" server-renders every route per request (expo-router's SSR
+    // pipeline), which in this sandboxed dev environment takes 30-45s per
+    // bundle — long enough that the browser/proxy closes the connection
+    // before it finishes, causing "Cannot pipe to a closed or destroyed
+    // stream" and a blank page. "single" (SPA, client-side routing) skips
+    // that per-request render entirely. Production exports still use
+    // "static" for proper static hosting/SEO.
+    output: process.env.NODE_ENV === "production" ? "static" : "single",
     favicon: "./assets/images/favicon.png",
   },
+  extra: publicOrigin ? { router: { origin: publicOrigin } } : undefined,
   plugins: [
     "expo-router",
     [

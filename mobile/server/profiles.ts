@@ -38,7 +38,7 @@ export const profilesRouter = router({
         contactPhone: z.string().max(64).optional(),
         bio: z.string().optional(),
         preferredModesJson: z.array(z.enum(BROWSING_MODES)).optional(),
-        profileMetaJson: z.record(z.unknown()).optional(),
+        profileMetaJson: z.record(z.string(), z.unknown()).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

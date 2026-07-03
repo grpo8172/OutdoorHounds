@@ -29,6 +29,27 @@
       "when": 1751328000000,
       "tag": "0003_add_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1783001752164,
+      "tag": "0004_brown_killraven",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1783088152164,
+      "tag": "0005_curly_black_cat",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1783090034917,
+      "tag": "0006_eminent_katie_power",
+      "breakpoints": true
     }
   ]
 }

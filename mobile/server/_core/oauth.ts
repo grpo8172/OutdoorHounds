@@ -2,11 +2,22 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.js";
 import type { Express, Request, Response } from "express";
 import { getUserByOpenId, upsertUser, getOrCreateProfile } from "../db";
 import { getSessionCookieOptions } from "./cookies";
-import { sdk } from "./sdk";
+import { sdk, exchangeGoogleCode } from "./sdk";
+import { ENV } from "./env";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
   return typeof value === "string" ? value : undefined;
+}
+
+type OAuthState = { returnTo: string; platform: "web" | "native" };
+
+function decodeState(state: string): OAuthState {
+  const decoded = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
+  if (!decoded?.returnTo || !decoded?.platform) {
+    throw new Error("Invalid state payload");
+  }
+  return decoded;
 }
 
 async function syncUser(userInfo: {
@@ -70,70 +81,91 @@ function buildUserResponse(
 }
 
 export function registerOAuthRoutes(app: Express) {
-  app.get("/api/oauth/callback", async (req: Request, res: Response) => {
+  // Single HTTPS callback for both web and native. Google's "Web
+  // application" OAuth client type only accepts http(s) redirect URIs, not
+  // custom URL schemes, so the actual per-platform destination (a web URL or
+  // a native deep link) travels inside `state`, never as the OAuth
+  // redirect_uri itself.
+  app.get("/api/oauth/google/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
+    const oauthError = getQueryParam(req, "error");
 
-    if (!code || !state) {
-      res.status(400).json({ error: "code and state are required" });
+    if (!state) {
+      res.status(400).json({ error: "state is required" });
+      return;
+    }
+
+    let returnTo: string;
+    let platform: OAuthState["platform"];
+    try {
+      ({ returnTo, platform } = decodeState(state));
+    } catch {
+      res.status(400).json({ error: "Invalid state parameter" });
+      return;
+    }
+
+    if (oauthError || !code) {
+      res.redirect(302, `${returnTo}?error=${encodeURIComponent(oauthError || "missing_code")}`);
       return;
     }
 
     try {
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-      await syncUser(userInfo);
-      const sessionToken = await sdk.createSessionToken(userInfo.openId!, {
-        name: userInfo.name || "",
+      const google = await exchangeGoogleCode(code, ENV.googleRedirectUri);
+      const user = await syncUser({
+        openId: google.openId,
+        name: google.name,
+        email: google.email,
+        loginMethod: "google",
+      });
+
+      const sessionToken = await sdk.createSessionToken(google.openId, {
+        name: google.name || "",
         expiresInMs: ONE_YEAR_MS,
       });
 
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      if (platform === "web") {
+        const cookieOptions = getSessionCookieOptions(req);
+        res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        res.redirect(302, returnTo);
+        return;
+      }
 
-      // Redirect to the frontend URL (Expo web on port 8081)
-      // Cookie is set with parent domain so it works across both 3000 and 8081 subdomains
-      const frontendUrl =
-        process.env.EXPO_WEB_PREVIEW_URL ||
-        process.env.EXPO_PACKAGER_PROXY_URL ||
-        "http://localhost:8081";
-      res.redirect(302, frontendUrl);
+      const userParam = Buffer.from(JSON.stringify(buildUserResponse(user))).toString("base64");
+      res.redirect(
+        302,
+        `${returnTo}?sessionToken=${encodeURIComponent(sessionToken)}&user=${encodeURIComponent(userParam)}`,
+      );
     } catch (error) {
-      console.error("[OAuth] Callback failed", error);
-      res.status(500).json({ error: "OAuth callback failed" });
+      console.error("[OAuth] Google callback failed", error);
+      res.redirect(302, `${returnTo}?error=${encodeURIComponent("oauth_failed")}`);
     }
   });
 
-  app.get("/api/oauth/mobile", async (req: Request, res: Response) => {
-    const code = getQueryParam(req, "code");
-    const state = getQueryParam(req, "state");
-
-    if (!code || !state) {
-      res.status(400).json({ error: "code and state are required" });
+  // Dev-only shortcut to test signed-in flows without a working OAuth
+  // provider configured. Mints a real session for a fixed test account —
+  // hard-blocked in production so it can never ship as a login bypass.
+  // Remove once Google OAuth is live on the real deployment target.
+  app.post("/api/auth/dev-login", async (req: Request, res: Response) => {
+    if (ENV.isProduction) {
+      res.status(404).json({ error: "Not found" });
       return;
     }
 
-    try {
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-      const user = await syncUser(userInfo);
+    const DEV_OPEN_ID = "dev-test-user";
+    const user = await syncUser({
+      openId: DEV_OPEN_ID,
+      name: "Test User",
+      email: "test-user@example.local",
+      loginMethod: "dev",
+    });
 
-      const sessionToken = await sdk.createSessionToken(userInfo.openId!, {
-        name: userInfo.name || "",
-        expiresInMs: ONE_YEAR_MS,
-      });
+    const sessionToken = await sdk.createSessionToken(DEV_OPEN_ID, { name: "Test User" });
 
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+    const cookieOptions = getSessionCookieOptions(req);
+    res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      res.json({
-        app_session_id: sessionToken,
-        user: buildUserResponse(user),
-      });
-    } catch (error) {
-      console.error("[OAuth] Mobile exchange failed", error);
-      res.status(500).json({ error: "OAuth mobile exchange failed" });
-    }
+    res.json({ success: true, sessionToken, user: buildUserResponse(user) });
   });
 
   app.post("/api/auth/logout", (req: Request, res: Response) => {

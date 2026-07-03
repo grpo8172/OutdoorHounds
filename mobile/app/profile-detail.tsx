@@ -1,11 +1,10 @@
 import { ScrollView, Text, View, Pressable, Image, FlatList } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { mockProfiles } from "@/lib/mockData";
 import { useState } from "react";
 
 export default function ProfileDetailScreen() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -15,12 +14,6 @@ export default function ProfileDetailScreen() {
     return (
       <ScreenContainer className="p-6 items-center justify-center">
         <Text className="text-lg text-foreground">Profile not found</Text>
-        <Pressable
-          onPress={() => router.back()}
-          className="mt-4 bg-primary rounded-lg px-6 py-3 active:opacity-80"
-        >
-          <Text className="text-background font-semibold">Go Back</Text>
-        </Pressable>
       </ScreenContainer>
     );
   }
@@ -140,8 +133,8 @@ export default function ProfileDetailScreen() {
 
           {/* Action Buttons */}
           <View className="gap-3 mt-4">
-            <Pressable className="bg-primary rounded-lg py-3 items-center active:opacity-80">
-              <Text className="text-background font-semibold text-base">
+            <Pressable className="rounded-lg py-3 items-center active:opacity-80" style={{ backgroundColor: "#e8843c" }}>
+              <Text className="font-semibold text-base" style={{ color: "#a8d4b8" }}>
                 {profile.type === "service" ? "Book Service" : "Show Interest"}
               </Text>
             </Pressable>
