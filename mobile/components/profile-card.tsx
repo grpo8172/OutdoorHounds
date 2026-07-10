@@ -1,12 +1,12 @@
-import { Image, Text, View, Pressable, Linking } from "react-native";
+import { useRef } from "react";
+import { Image, Text, View, Pressable, Linking, Animated, PanResponder } from "react-native";
 import { Profile } from "@/lib/mockData";
-import { cn } from "@/lib/utils";
 
 const WEB_BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:8000";
+const SWIPE_THRESHOLD = 100;
 
 interface ProfileCardProps {
   profile: Profile;
-  onPress?: () => void;
   onSwipeRight?: () => void;
   onSwipeLeft?: () => void;
   currentIndex: number;
@@ -15,107 +15,185 @@ interface ProfileCardProps {
 
 export function ProfileCard({
   profile,
-  onPress,
   onSwipeRight,
   onSwipeLeft,
   currentIndex,
   totalProfiles,
 }: ProfileCardProps) {
+  const position = useRef(new Animated.ValueXY()).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      // Don't capture on initial press — let inner buttons handle taps
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        Math.abs(gesture.dx) > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+      onPanResponderMove: (_, gesture) => {
+        position.setValue({ x: gesture.dx, y: gesture.dy * 0.15 });
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dx > SWIPE_THRESHOLD) {
+          Animated.timing(position, {
+            toValue: { x: 500, y: gesture.dy },
+            duration: 180,
+            useNativeDriver: true,
+          }).start(() => {
+            position.setValue({ x: 0, y: 0 });
+            onSwipeRight?.();
+          });
+        } else if (gesture.dx < -SWIPE_THRESHOLD) {
+          Animated.timing(position, {
+            toValue: { x: -500, y: gesture.dy },
+            duration: 180,
+            useNativeDriver: true,
+          }).start(() => {
+            position.setValue({ x: 0, y: 0 });
+            onSwipeLeft?.();
+          });
+        } else {
+          Animated.spring(position, {
+            toValue: { x: 0, y: 0 },
+            useNativeDriver: true,
+            friction: 5,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  const rotate = position.x.interpolate({
+    inputRange: [-300, 0, 300],
+    outputRange: ["-12deg", "0deg", "12deg"],
+    extrapolate: "clamp",
+  });
+
+  const saveOpacity = position.x.interpolate({
+    inputRange: [20, SWIPE_THRESHOLD],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+
+  const skipOpacity = position.x.interpolate({
+    inputRange: [-SWIPE_THRESHOLD, -20],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
   return (
-    <Pressable
-      onPress={onPress}
-      className="w-full bg-surface rounded-2xl overflow-hidden shadow-md border border-border"
+    <Animated.View
+      {...panResponder.panHandlers}
+      style={{
+        transform: [
+          { translateX: position.x },
+          { translateY: position.y },
+          { rotate },
+        ],
+        borderRadius: 16,
+        backgroundColor: "white",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: "rgba(0,0,0,0.08)",
+      }}
     >
-      {/* Image Container */}
-      <View className="w-full h-80 bg-muted relative">
+      {/* Image */}
+      <View style={{ width: "100%", height: 200, backgroundColor: "#e5e7eb", position: "relative", borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: "hidden" }}>
         <Image
           source={{ uri: profile.images[0] }}
-          className="w-full h-full"
+          style={{ width: "100%", height: "100%" }}
           resizeMode="cover"
         />
-        {/* Gradient Overlay */}
-        <View className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-        {/* Index Badge */}
-        <View className="absolute top-3 right-3 bg-black/50 rounded-full px-3 py-1">
-          <Text className="text-white text-xs font-semibold">
+        {/* SAVE badge */}
+        <Animated.View
+          style={{
+            opacity: saveOpacity,
+            position: "absolute",
+            top: 20,
+            left: 16,
+            borderWidth: 3,
+            borderColor: "#16a34a",
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            transform: [{ rotate: "-15deg" }],
+          }}
+        >
+          <Text style={{ color: "#16a34a", fontSize: 22, fontWeight: "800" }}>SAVE</Text>
+        </Animated.View>
+
+        {/* SKIP badge */}
+        <Animated.View
+          style={{
+            opacity: skipOpacity,
+            position: "absolute",
+            top: 20,
+            right: 16,
+            borderWidth: 3,
+            borderColor: "#dc2626",
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            transform: [{ rotate: "15deg" }],
+          }}
+        >
+          <Text style={{ color: "#dc2626", fontSize: 22, fontWeight: "800" }}>SKIP</Text>
+        </Animated.View>
+
+        {/* Counter badge */}
+        <View
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            borderRadius: 20,
+            paddingHorizontal: 10,
+            paddingVertical: 3,
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 11, fontWeight: "600" }}>
             {currentIndex + 1} / {totalProfiles}
           </Text>
         </View>
       </View>
 
-      {/* Content Container */}
-      <View className="p-4 gap-2">
-        {/* Name and Type */}
-        <View className="flex-row items-center justify-between">
-          <View className="flex-1">
-            <Text className="text-2xl font-bold text-foreground">
-              {profile.name}
-            </Text>
-            {profile.breed && (
-              <Text className="text-sm text-muted">{profile.breed}</Text>
-            )}
-            {profile.age && (
-              <Text className="text-sm text-muted">{profile.age} years old</Text>
-            )}
+      {/* Content */}
+      <View style={{ padding: 16, gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 22, fontWeight: "700", color: "#1a1a1a" }}>{profile.name}</Text>
+            {profile.breed && <Text style={{ fontSize: 13, color: "#6b7280" }}>{profile.breed}</Text>}
+            {profile.age && <Text style={{ fontSize: 13, color: "#6b7280" }}>{profile.age} years old</Text>}
           </View>
           {profile.rating && (
-            <View className="items-center">
-              <Text className="text-lg font-bold text-primary">
-                ⭐ {profile.rating}
-              </Text>
-            </View>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#e8843c" }}>⭐ {profile.rating}</Text>
           )}
         </View>
 
-        {/* Location */}
-        <View className="flex-row items-center gap-1">
-          <Text className="text-sm text-muted">📍</Text>
-          <Text className="text-sm text-muted">
-            {profile.location}
-            {profile.distance && ` • ${profile.distance}km away`}
-          </Text>
-        </View>
+        <Text style={{ fontSize: 13, color: "#6b7280" }}>📍 {profile.location}{profile.distance ? ` • ${profile.distance}km away` : ""}</Text>
 
-        {/* Description */}
-        <Text className="text-sm text-foreground leading-relaxed mt-2">
-          {profile.description.substring(0, 100)}
-          {profile.description.length > 100 ? "..." : ""}
+        <Text style={{ fontSize: 13, color: "#374151", lineHeight: 20, marginTop: 4 }}>
+          {profile.description.substring(0, 100)}{profile.description.length > 100 ? "..." : ""}
         </Text>
 
-        {/* Price (if service) */}
         {profile.price && (
-          <Text className="text-sm font-semibold text-primary mt-2">
-            {profile.price}
-          </Text>
+          <Text style={{ fontSize: 13, fontWeight: "600", color: "#e8843c", marginTop: 2 }}>{profile.price}</Text>
         )}
 
-        {/* Action Buttons */}
-        <View className="flex-row gap-3 mt-4">
-          <Pressable
-            onPress={onSwipeLeft}
-            className="flex-1 bg-error/10 rounded-lg py-2 items-center active:opacity-70"
-          >
-            <Text className="text-error font-semibold">Skip</Text>
-          </Pressable>
-          <Pressable
-            onPress={onSwipeRight}
-            className="flex-1 bg-success/10 rounded-lg py-2 items-center active:opacity-70"
-          >
-            <Text className="text-success font-semibold">Save for later</Text>
-          </Pressable>
-        </View>
-
-        {/* View on website — only for real DB listings (id starts with "db_") */}
+        {/* View on website — only for real DB listings */}
         {profile.id.startsWith("db_") && (
           <Pressable
             onPress={() => Linking.openURL(`${WEB_BASE_URL}/items/${profile.id.replace("db_", "")}`)}
-            className="mt-2 rounded-lg py-2 items-center active:opacity-70 border border-border"
+            style={{ marginTop: 4, borderRadius: 10, paddingVertical: 6, alignItems: "center", borderWidth: 1, borderColor: "#e5e7eb" }}
           >
-            <Text className="text-xs text-muted">🌐 View on website</Text>
+            <Text style={{ fontSize: 12, color: "#9ca3af" }}>🌐 View on website</Text>
           </Pressable>
         )}
       </View>
-    </Pressable>
+    </Animated.View>
   );
 }

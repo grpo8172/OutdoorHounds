@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, Pressable, RefreshControl, ActivityIndicator } from "react-native";
+import { ScrollView, Text, View, Pressable, RefreshControl, ActivityIndicator, StyleSheet } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
@@ -93,12 +93,35 @@ export default function DiscoverScreen() {
           {/* Profile Card */}
           <View className="flex-1 justify-center">
             <ProfileCard
+              key={currentProfile.id}
               profile={currentProfile}
               onSwipeRight={swipeRight}
               onSwipeLeft={swipeLeft}
               currentIndex={currentIndex}
               totalProfiles={totalProfiles}
             />
+          </View>
+
+          {/* Skip / Save buttons */}
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <Pressable
+              onPress={swipeLeft}
+              style={({ pressed }) => ({
+                flex: 1, alignItems: "center", paddingVertical: 14, borderRadius: 14,
+                backgroundColor: pressed ? "#fecaca" : "#fee2e2",
+              })}
+            >
+              <Text style={{ color: "#dc2626", fontWeight: "700", fontSize: 16 }}>✕  Skip</Text>
+            </Pressable>
+            <Pressable
+              onPress={swipeRight}
+              style={({ pressed }) => ({
+                flex: 1, alignItems: "center", paddingVertical: 14, borderRadius: 14,
+                backgroundColor: pressed ? "#bbf7d0" : "#dcfce7",
+              })}
+            >
+              <Text style={{ color: "#16a34a", fontWeight: "700", fontSize: 16 }}>♥  Save</Text>
+            </Pressable>
           </View>
 
           {/* Stats */}
