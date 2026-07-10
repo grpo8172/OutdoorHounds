@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { Profile, AppMode, mockProfiles } from "@/lib/mockData";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "./use-auth";
 
 // Reverse mapping: itemType stored in DB → AppMode used in the client
 const ITEM_TYPE_TO_MODE: Record<string, AppMode> = {
@@ -71,6 +72,9 @@ export interface UseSwipeProfilesReturn {
 }
 
 export function useSwipeProfiles(mode: AppMode = "adopt_or_foster"): UseSwipeProfilesReturn {
+  const { user } = useAuth();
+  const saveItemMutation = trpc.messages.saveItem.useMutation();
+
   const query = trpc.items.listByMode.useQuery(
     { mode },
     {
@@ -103,9 +107,15 @@ export function useSwipeProfiles(mode: AppMode = "adopt_or_foster"): UseSwipePro
   const currentProfile = allProfiles[currentIndex] ?? null;
 
   const swipeRight = useCallback(() => {
-    if (currentProfile) setSavedListings((prev) => [...prev, currentProfile]);
+    if (currentProfile) {
+      setSavedListings((prev) => [...prev, currentProfile]);
+      if (user && currentProfile.id.startsWith("db_")) {
+        const itemId = parseInt(currentProfile.id.replace("db_", ""), 10);
+        if (!isNaN(itemId)) saveItemMutation.mutate({ itemId });
+      }
+    }
     setCurrentIndex((prev) => prev + 1);
-  }, [currentProfile]);
+  }, [currentProfile, user, saveItemMutation]);
 
   const swipeLeft = useCallback(() => {
     if (currentProfile) setSkippedListings((prev) => [...prev, currentProfile]);

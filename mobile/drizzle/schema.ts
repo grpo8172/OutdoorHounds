@@ -104,3 +104,24 @@ export const swipes = mysqlTable("swipes", {
 
 export type Swipe = typeof swipes.$inferSelect;
 export type InsertSwipe = typeof swipes.$inferInsert;
+
+export const conversations = mysqlTable("conversations", {
+  id: int("id").autoincrement().primaryKey(),
+  itemId: int("item_id").notNull(),
+  buyerUserId: int("buyer_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = typeof conversations.$inferInsert;
+
+export const messages = mysqlTable("messages", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: int("conversation_id").notNull(),
+  senderId: int("sender_id").notNull(),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;

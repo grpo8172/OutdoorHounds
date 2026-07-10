@@ -11,25 +11,46 @@ const DEFAULT_MODES = [
   { key: 'petting_zoo_booking', active: true, emoji: '🐑', label: 'Mini Petting Zoo' },
 ]
 
+const CACHE_KEY = 'owner_config_cache'
+
+function mergeConfig(data) {
+  const existing = data.mode_config || []
+  const merged = DEFAULT_MODES.map(def => {
+    const found = existing.find(m => m.key === def.key)
+    return found || def
+  })
+  return { ...data, mode_config: merged }
+}
+
+function readCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
+function writeCache(data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
+}
+
 export default function OwnerSetup() {
-  const [config, setConfig] = useState(null)
+  const [config, setConfig] = useState(() => readCache() ?? mergeConfig({
+    business_name: 'Outdoor Hounds',
+    tagline: 'Adopt a friend, join a hike, book a service.',
+    mode_config: [],
+    hero_photos: [],
+  }))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     getConfig().then(data => {
-      // Ensure mode_config has all keys (merge with defaults for any missing)
-      const existing = data.mode_config || []
-      const merged = DEFAULT_MODES.map(def => {
-        const found = existing.find(m => m.key === def.key)
-        return found || def
-      })
-      setConfig({ ...data, mode_config: merged })
+      const merged = mergeConfig(data)
+      setConfig(merged)
+      writeCache(merged)
     }).catch(() => {})
   }, [])
-
-  if (!config) return <div style={{ padding: '2rem', color: '#777' }}>Loading…</div>
 
   const updateMode = (key, field, value) => {
     setConfig({

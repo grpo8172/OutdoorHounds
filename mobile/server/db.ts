@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -7,6 +7,11 @@ import {
   users,
   profiles,
   subscriptions,
+  swipes,
+  conversations,
+  messages,
+  Conversation,
+  Message,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -195,4 +200,65 @@ export async function hasActiveSubscription(userId: number): Promise<boolean> {
     )
     .limit(1);
   return result.length > 0;
+}
+
+// ── Swipes (saved listings) ──────────────────────────────────────────────────
+
+export async function persistSwipe(userId: number, itemId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(swipes).values({ userId, catalogueItemId: itemId }).onDuplicateKeyUpdate({ set: { userId } });
+}
+
+export async function getSavedItemIds(userId: number): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ id: swipes.catalogueItemId }).from(swipes).where(eq(swipes.userId, userId));
+  return rows.map(r => r.id);
+}
+
+// ── Conversations & messages ─────────────────────────────────────────────────
+
+export async function getOrCreateConversation(buyerUserId: number, itemId: number): Promise<Conversation> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(conversations).values({ itemId, buyerUserId }).onDuplicateKeyUpdate({ set: { itemId } });
+  const rows = await db.select().from(conversations)
+    .where(and(eq(conversations.itemId, itemId), eq(conversations.buyerUserId, buyerUserId)))
+    .limit(1);
+  return rows[0];
+}
+
+export async function getMessages(conversationId: number): Promise<Message[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(messages).where(eq(messages.conversationId, conversationId)).orderBy(messages.createdAt);
+}
+
+export async function createMessage(conversationId: number, senderId: number, body: string): Promise<Message> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(messages).values({ conversationId, senderId, body });
+  const rows = await db.select().from(messages)
+    .where(and(eq(messages.conversationId, conversationId), eq(messages.senderId, senderId)))
+    .orderBy(desc(messages.createdAt)).limit(1);
+  return rows[0];
+}
+
+export async function getMyConversations(userId: number): Promise<Array<Conversation & { lastMessage: string | null; itemName: string | null }>> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select().from(conversations).where(eq(conversations.buyerUserId, userId)).orderBy(desc(conversations.createdAt));
+  if (rows.length === 0) return [];
+
+  // Attach last message and item name for each conversation
+  const enriched = await Promise.all(rows.map(async (conv) => {
+    const lastMsgs = await db!.select({ body: messages.body }).from(messages)
+      .where(eq(messages.conversationId, conv.id)).orderBy(desc(messages.createdAt)).limit(1);
+    // Fetch item name via raw select on catalogue_items
+    const itemRows = await db!.execute(sql`SELECT name FROM catalogue_items WHERE id = ${conv.itemId} LIMIT 1`) as any;
+    const itemName = itemRows?.[0]?.[0]?.name ?? null;
+    return { ...conv, lastMessage: lastMsgs[0]?.body ?? null, itemName };
+  }));
+  return enriched;
 }
