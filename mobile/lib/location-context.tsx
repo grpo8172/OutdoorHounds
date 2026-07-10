@@ -4,6 +4,7 @@ import * as ExpoLocation from "expo-location";
 type LocationState = {
   lat: number | null;
   lng: number | null;
+  placeName: string | null;
   radiusKm: number;
   enabled: boolean;
   loading: boolean;
@@ -17,14 +18,28 @@ type LocationContextValue = LocationState & {
 };
 
 const LocationContext = createContext<LocationContextValue>({
-  lat: null, lng: null, radiusKm: 25, enabled: false,
+  lat: null, lng: null, placeName: null, radiusKm: 25, enabled: false,
   loading: false, error: null,
   setRadius: () => {}, requestLocation: async () => {}, disable: () => {},
 });
 
+async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+    const res = await fetch(url, { headers: { "User-Agent": "OutdoorHoundsApp/1.0" } });
+    const data = await res.json() as { address?: Record<string, string> };
+    const a = data.address ?? {};
+    // Pick the most readable locality name available
+    const name = a.suburb ?? a.neighbourhood ?? a.village ?? a.town ?? a.city_district ?? a.city ?? a.county ?? a.state;
+    return name ?? "Your location";
+  } catch {
+    return "Your location";
+  }
+}
+
 export function LocationProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<LocationState>({
-    lat: null, lng: null, radiusKm: 25, enabled: false, loading: false, error: null,
+    lat: null, lng: null, placeName: null, radiusKm: 25, enabled: false, loading: false, error: null,
   });
 
   const requestLocation = useCallback(async () => {
@@ -36,8 +51,10 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         return;
       }
       const pos = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Balanced });
-      setState(s => ({ ...s, lat: pos.coords.latitude, lng: pos.coords.longitude, enabled: true, loading: false }));
-    } catch (e) {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      const placeName = await reverseGeocode(lat, lng);
+      setState(s => ({ ...s, lat, lng, placeName, enabled: true, loading: false }));
+    } catch {
       setState(s => ({ ...s, loading: false, error: "Could not get your location." }));
     }
   }, []);
@@ -47,7 +64,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const disable = useCallback(() => {
-    setState(s => ({ ...s, lat: null, lng: null, enabled: false }));
+    setState(s => ({ ...s, lat: null, lng: null, placeName: null, enabled: false }));
   }, []);
 
   return (

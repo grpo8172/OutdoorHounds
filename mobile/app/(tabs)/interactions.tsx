@@ -30,7 +30,7 @@ function SignInPrompt() {
 }
 
 export default function InteractionsScreen() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("saved");
   const { savedListings } = useSwipeProfiles();
 
@@ -71,7 +71,11 @@ export default function InteractionsScreen() {
         ))}
       </View>
 
-      {!user ? (
+      {authLoading ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ color: "#9ca3af" }}>Loading…</Text>
+        </View>
+      ) : !user ? (
         <SignInPrompt />
       ) : (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>

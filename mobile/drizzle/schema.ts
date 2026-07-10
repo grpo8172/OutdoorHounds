@@ -1,4 +1,5 @@
 import {
+  decimal,
   int,
   json,
   mysqlEnum,

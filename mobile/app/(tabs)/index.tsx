@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { MODES } from "@/lib/modes";
 import { useAuth } from "@/hooks/use-auth";
-import { startOAuthLogin } from "@/constants/oauth";
 
 const WEB_BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:8000";
 
@@ -27,7 +26,7 @@ export default function HomeScreen() {
   return (
     <ScreenContainer>
       <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 12 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 100, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={{ gap: 2, paddingTop: 4, marginBottom: 4 }}>
@@ -77,6 +76,27 @@ export default function HomeScreen() {
           </View>
         </Pressable>
 
+        {/* Sign-in nudge for guests */}
+        {!loading && !user && (
+          <Pressable
+            onPress={() => router.navigate("/(tabs)/settings")}
+            style={{
+              width: "100%", borderRadius: 16, borderWidth: 1.5,
+              borderColor: "#e8843c", paddingVertical: 14, paddingHorizontal: 20,
+              flexDirection: "row", alignItems: "center", gap: 14,
+            }}
+          >
+            <Text style={{ fontSize: 24 }}>👤</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: "700", fontSize: 15, color: "#e8843c" }}>Create a profile</Text>
+              <Text style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
+                Save listings · chat with listers · arrange payment privately
+              </Text>
+            </View>
+            <Text style={{ color: "#e8843c", fontSize: 16 }}>→</Text>
+          </Pressable>
+        )}
+
         {/* Website CTA */}
         <Pressable
           onPress={() => Linking.openURL(WEB_BASE_URL)}
@@ -90,7 +110,6 @@ export default function HomeScreen() {
             alignItems: "center",
             gap: 14,
           }}
-          className="active:opacity-80"
         >
           <Text style={{ fontSize: 28 }}>🌐</Text>
           <View style={{ flex: 1 }}>
@@ -101,28 +120,6 @@ export default function HomeScreen() {
           </View>
           <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 18 }}>→</Text>
         </Pressable>
-
-        {/* Sign-in nudge for guests */}
-        {!loading && !user && (
-          <Pressable
-            onPress={() => startOAuthLogin()}
-            style={{
-              width: "100%", borderRadius: 16, borderWidth: 1.5,
-              borderColor: "#e8843c", paddingVertical: 14, paddingHorizontal: 20,
-              flexDirection: "row", alignItems: "center", gap: 14,
-            }}
-            className="active:opacity-80"
-          >
-            <Text style={{ fontSize: 24 }}>👤</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: "700", fontSize: 15, color: "#e8843c" }}>Create a profile</Text>
-              <Text style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
-                Save listings · chat with listers · arrange payment privately
-              </Text>
-            </View>
-            <Text style={{ color: "#e8843c", fontSize: 16 }}>→</Text>
-          </Pressable>
-        )}
 
         <Text className="text-center text-xs text-muted" style={{ marginTop: 4 }}>
           Tap a card to start browsing

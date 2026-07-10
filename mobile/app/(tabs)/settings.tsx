@@ -21,7 +21,7 @@ const PROFILE_TYPE_LABELS: Record<string, string> = {
 
 export default function SettingsScreen() {
   const { user, logout, devLogin } = useAuth();
-  const { lat, lng, radiusKm, enabled: locationEnabled, loading: locationLoading, error: locationError, requestLocation, setRadius, disable: disableLocation } = useLocation();
+  const { lat, lng, placeName, radiusKm, enabled: locationEnabled, loading: locationLoading, error: locationError, requestLocation, setRadius, disable: disableLocation } = useLocation();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
@@ -164,11 +164,11 @@ export default function SettingsScreen() {
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <View style={{ flex: 1 }}>
                 <Text className="text-sm text-foreground" style={{ fontWeight: "500" }}>
-                  {locationEnabled ? `📍 Using your location` : "Use my location"}
+                  {locationEnabled ? `📍 ${placeName ?? "Your location"}` : "Use my location"}
                 </Text>
-                {locationEnabled && lat != null && (
+                {locationEnabled && (
                   <Text className="text-xs text-muted" style={{ marginTop: 2 }}>
-                    {lat.toFixed(4)}, {lng?.toFixed(4)}
+                    Showing listings within {radiusKm}km
                   </Text>
                 )}
                 {locationError && (
