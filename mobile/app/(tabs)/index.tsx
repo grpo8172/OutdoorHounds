@@ -1,7 +1,9 @@
-import { Image, ScrollView, Text, View, Pressable } from "react-native";
+import { Image, ScrollView, Text, View, Pressable, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { MODES } from "@/lib/modes";
+
+const WEB_BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:8000";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -57,6 +59,31 @@ export default function HomeScreen() {
               <Text className="text-xs text-muted">Share a pet, service, event or product</Text>
             </View>
           </View>
+        </Pressable>
+
+        {/* Website CTA */}
+        <Pressable
+          onPress={() => Linking.openURL(WEB_BASE_URL)}
+          style={{
+            width: "100%",
+            borderRadius: 16,
+            backgroundColor: "#e8843c",
+            paddingVertical: 16,
+            paddingHorizontal: 20,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 14,
+          }}
+          className="active:opacity-80"
+        >
+          <Text style={{ fontSize: 28 }}>🌐</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Visit the Website</Text>
+            <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 2 }}>
+              Set up your profile · manage payments · create listings
+            </Text>
+          </View>
+          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 18 }}>→</Text>
         </Pressable>
 
         <Text className="text-center text-xs text-muted" style={{ marginTop: 4 }}>

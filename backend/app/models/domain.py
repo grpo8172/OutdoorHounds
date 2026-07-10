@@ -54,6 +54,24 @@ class AuditEvent(Base):
     details = Column(Text)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+class OwnerConfig(Base):
+    __tablename__ = "owner_config"
+    id = Column(Integer, primary_key=True)
+    business_name = Column(String(255), default="Outdoor Hounds")
+    tagline = Column(String(512), default="Adopt a friend, join a hike, book a service.")
+    # Full mode config — each entry: {key, active, emoji, label}
+    mode_config = Column(JSON, default=lambda: [
+        {"key": "pet",                 "active": True, "emoji": "🐾", "label": "Adopt / Foster"},
+        {"key": "service",             "active": True, "emoji": "🦮", "label": "Pet Services"},
+        {"key": "event",               "active": True, "emoji": "🎉", "label": "Pet Events"},
+        {"key": "stall",               "active": True, "emoji": "🛍️", "label": "Stalls & Shops"},
+        {"key": "lost_found",          "active": True, "emoji": "🔍", "label": "Lost & Found"},
+        {"key": "hike",                "active": True, "emoji": "🥾", "label": "Group Hikes"},
+        {"key": "petting_zoo_booking", "active": True, "emoji": "🐑", "label": "Mini Petting Zoo"},
+    ])
+    hero_photos = Column(JSON, default=lambda: [])
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
 class Profile(Base):
     # Shared table — created and owned by the mobile auth flow.
     # user_id references the mobile `users` table (Drizzle-managed).

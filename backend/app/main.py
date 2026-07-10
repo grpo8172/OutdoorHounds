@@ -1,9 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
-import os
+import os, uuid, shutil
 
 from app.database import engine, Base, get_db
 from app.models import domain as models
@@ -14,6 +14,19 @@ from app.policy.guardrails import require_approval, validate_assistant_response
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Outdoor Hounds API")
+
+WEB_UPLOADS_DIR = "/app/web-uploads"
+os.makedirs(WEB_UPLOADS_DIR, exist_ok=True)
+
+DEFAULT_MODE_CONFIG = [
+    {"key": "pet",                 "active": True, "emoji": "🐾", "label": "Adopt / Foster"},
+    {"key": "service",             "active": True, "emoji": "🦮", "label": "Pet Services"},
+    {"key": "event",               "active": True, "emoji": "🎉", "label": "Pet Events"},
+    {"key": "stall",               "active": True, "emoji": "🛍️", "label": "Stalls & Shops"},
+    {"key": "lost_found",          "active": True, "emoji": "🔍", "label": "Lost & Found"},
+    {"key": "hike",                "active": True, "emoji": "🥾", "label": "Group Hikes"},
+    {"key": "petting_zoo_booking", "active": True, "emoji": "🐑", "label": "Mini Petting Zoo"},
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -151,6 +164,57 @@ def update_my_profile(
     db.commit()
     db.refresh(profile)
     return profile
+
+
+@app.get("/api/config", response_model=schemas.OwnerConfigResponse)
+def get_config(db: Session = Depends(get_db)):
+    config = db.query(models.OwnerConfig).first()
+    if not config:
+        config = models.OwnerConfig(
+            business_name="Outdoor Hounds",
+            tagline="Adopt a friend, join a hike, book a service.",
+            mode_config=DEFAULT_MODE_CONFIG,
+            hero_photos=[],
+        )
+        db.add(config)
+        db.commit()
+        db.refresh(config)
+    return config
+
+
+@app.put("/api/config", response_model=schemas.OwnerConfigResponse)
+def update_config(update: schemas.OwnerConfigUpdate, db: Session = Depends(get_db)):
+    config = db.query(models.OwnerConfig).first()
+    if not config:
+        config = models.OwnerConfig(mode_config=DEFAULT_MODE_CONFIG, hero_photos=[])
+        db.add(config)
+    for field, value in update.model_dump(exclude_unset=True).items():
+        setattr(config, field, value)
+    _log(db, "config_updated", f"Owner config updated.")
+    db.commit()
+    db.refresh(config)
+    return config
+
+
+@app.post("/api/config/photos")
+async def upload_config_photo(files: List[UploadFile] = File(...)):
+    urls = []
+    for file in files:
+        ext = os.path.splitext(file.filename or "")[1] or ".jpg"
+        filename = uuid.uuid4().hex[:16] + ext
+        dest = os.path.join(WEB_UPLOADS_DIR, filename)
+        with open(dest, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        urls.append(f"/api/photos/{filename}")
+    return {"urls": urls}
+
+
+@app.get("/api/photos/{filename}")
+async def serve_photo(filename: str):
+    path = os.path.join(WEB_UPLOADS_DIR, filename)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404)
+    return FileResponse(path)
 
 
 @app.post("/api/assistant/setup")

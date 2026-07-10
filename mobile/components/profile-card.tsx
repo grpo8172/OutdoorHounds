@@ -184,15 +184,15 @@ export function ProfileCard({
           <Text style={{ fontSize: 13, fontWeight: "600", color: "#e8843c", marginTop: 2 }}>{profile.price}</Text>
         )}
 
-        {/* View on website — only for real DB listings */}
-        {profile.id.startsWith("db_") && (
-          <Pressable
-            onPress={() => Linking.openURL(`${WEB_BASE_URL}/items/${profile.id.replace("db_", "")}`)}
-            style={{ marginTop: 4, borderRadius: 10, paddingVertical: 6, alignItems: "center", borderWidth: 1, borderColor: "#e5e7eb" }}
-          >
-            <Text style={{ fontSize: 12, color: "#9ca3af" }}>🌐 View on website</Text>
-          </Pressable>
-        )}
+        <Pressable
+          onPress={() => {
+            const itemId = profile.id.startsWith("db_") ? profile.id.replace("db_", "") : profile.id;
+            Linking.openURL(`${WEB_BASE_URL}/items/${itemId}`);
+          }}
+          style={{ marginTop: 4, borderRadius: 10, paddingVertical: 6, alignItems: "center", borderWidth: 1, borderColor: "#e5e7eb" }}
+        >
+          <Text style={{ fontSize: 12, color: "#9ca3af" }}>🌐 View on website</Text>
+        </Pressable>
       </View>
     </Animated.View>
   );

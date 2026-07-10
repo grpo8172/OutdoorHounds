@@ -1,25 +1,24 @@
 import { useEffect, useState } from 'react'
-import { getItems, createEnquiry } from '../../api/client'
+import { getItems, getConfig, createEnquiry } from '../../api/client'
 
-const FILTERS = [
-  { key: 'all',                  label: 'All' },
-  { key: 'pet',                  label: 'Adopt' },
-  { key: 'hike',                 label: 'Group Hike' },
-  { key: 'service',              label: 'Walk / Sit' },
-  { key: 'petting_zoo_booking',  label: 'Mini Petting Zoo' },
-]
-
-const TYPE_LABEL = {
-  pet:                 'Adopt',
+const ALL_TYPE_LABELS = {
+  pet:                 'Adopt / Foster',
   hike:                'Group Hike',
-  service:             'Walk / Sit',
-  petting_zoo_booking: 'Mini Petting Zoo Booking',
+  service:             'Pet Services',
+  petting_zoo_booking: 'Mini Petting Zoo',
+  event:               'Pet Event',
+  stall:               'Stall / Shop',
+  lost_found:          'Lost & Found',
+}
+
+const ALL_TYPE_EMOJIS = {
+  pet: '🐾', hike: '🥾', service: '🦮', petting_zoo_booking: '🐑',
+  event: '🎉', stall: '🛍️', lost_found: '🔍',
 }
 
 const STANDARD_CTA = {
-  pet:     'Apply to Adopt',
-  hike:    'Request a Spot',
-  service: 'Enquire',
+  pet: 'Apply to Adopt', hike: 'Request a Spot', service: 'Enquire',
+  event: 'Get Tickets', stall: 'Enquire', lost_found: 'I Think I Found Them',
 }
 
 async function sendEnquiry(itemId, prefix, onDone) {
@@ -31,92 +30,51 @@ async function sendEnquiry(itemId, prefix, onDone) {
 
 function PettingZooCard({ item, saved, onSave }) {
   const m = item.listing_meta || {}
-
   const [sent, setSent] = useState(null)
-  const notify = (label) => {
-    setSent(label)
-    setTimeout(() => setSent(null), 3000)
-  }
-
+  const notify = (label) => { setSent(label); setTimeout(() => setSent(null), 3000) }
   const actions = [
-    {
-      label: 'Check availability',
-      prompt: 'Which dates are you interested in? Any other details:',
-      style: 'btn btn--primary',
-    },
-    {
-      label: 'Request booking',
-      prompt: 'Tell Jenna about your event — date, location, number of guests:',
-      style: 'btn btn--primary',
-    },
-    {
-      label: 'Ask a question',
-      prompt: 'What would you like to know?',
-      style: 'btn btn--outline',
-    },
+    { label: 'Check availability', prompt: 'Which dates are you interested in? Any other details:', style: 'btn btn--primary' },
+    { label: 'Request booking', prompt: 'Tell us about your event — date, location, number of guests:', style: 'btn btn--primary' },
+    { label: 'Ask a question', prompt: 'What would you like to know?', style: 'btn btn--outline' },
   ]
-
   return (
     <div className="card card--zoo">
-      {item.image_url && (
-        <img src={item.image_url} alt={item.name} onError={(e) => { e.target.style.display = 'none' }} />
-      )}
+      {item.image_url && <img src={item.image_url} alt={item.name} onError={e => { e.target.style.display = 'none' }} />}
       <div className="card-body">
-        <span className="tag petting_zoo_booking">{TYPE_LABEL.petting_zoo_booking}</span>
+        <span className="tag petting_zoo_booking">{ALL_TYPE_LABELS.petting_zoo_booking}</span>
         <h3>{item.name}</h3>
         <p style={{ marginBottom: '1rem' }}>{item.description}</p>
-
         <dl className="zoo-details">
-          {m.animals_included  && <><dt>Animals</dt>      <dd>{m.animals_included}</dd></>}
-          {m.booking_duration  && <><dt>Duration</dt>     <dd>{m.booking_duration}</dd></>}
-          {item.price          && <><dt>Price</dt>        <dd>{item.price}</dd></>}
-          {m.service_area      && <><dt>Area</dt>         <dd>{m.service_area}</dd></>}
-          {m.max_guests        && <><dt>Max guests</dt>   <dd>{m.max_guests}</dd></>}
-          {m.suitable_ages     && <><dt>Suitable for</dt> <dd>{m.suitable_ages}</dd></>}
-          {m.indoor_outdoor    && <><dt>Setting</dt>      <dd>{m.indoor_outdoor}</dd></>}
-          {m.available_dates   && <><dt>Availability</dt> <dd>{m.available_dates}</dd></>}
+          {m.animals_included && <><dt>Animals</dt><dd>{m.animals_included}</dd></>}
+          {m.booking_duration  && <><dt>Duration</dt><dd>{m.booking_duration}</dd></>}
+          {item.price          && <><dt>Price</dt><dd>{item.price}</dd></>}
+          {m.service_area      && <><dt>Area</dt><dd>{m.service_area}</dd></>}
+          {m.max_guests        && <><dt>Max guests</dt><dd>{m.max_guests}</dd></>}
+          {m.suitable_ages     && <><dt>Suitable for</dt><dd>{m.suitable_ages}</dd></>}
+          {m.indoor_outdoor    && <><dt>Setting</dt><dd>{m.indoor_outdoor}</dd></>}
+          {m.available_dates   && <><dt>Availability</dt><dd>{m.available_dates}</dd></>}
         </dl>
-
-        {m.safety_notes && (
-          <p className="zoo-note"><strong>Safety:</strong> {m.safety_notes}</p>
-        )}
-        {m.insurance_notes && (
-          <p className="zoo-note"><strong>Insurance &amp; licences:</strong> {m.insurance_notes}</p>
-        )}
-        {m.contact && (
-          <p className="zoo-note"><strong>Contact:</strong> {m.contact}</p>
-        )}
-
-        {sent && <p className="zoo-sent">✓ {sent} — Jenna will be in touch soon.</p>}
-
+        {m.safety_notes    && <p className="zoo-note"><strong>Safety:</strong> {m.safety_notes}</p>}
+        {m.insurance_notes && <p className="zoo-note"><strong>Insurance &amp; licences:</strong> {m.insurance_notes}</p>}
+        {m.contact         && <p className="zoo-note"><strong>Contact:</strong> {m.contact}</p>}
+        {sent && <p className="zoo-sent">✓ {sent} — we'll be in touch soon.</p>}
         <div className="zoo-actions">
           {actions.map(({ label, prompt, style }) => (
-            <button
-              key={label}
-              className={style}
-              onClick={() => sendEnquiry(item.id, prompt, () => notify(label))}
-            >
-              {label}
-            </button>
+            <button key={label} className={style} onClick={() => sendEnquiry(item.id, prompt, () => notify(label))}>{label}</button>
           ))}
-          <button
-            className={`btn btn--outline${saved ? ' btn--saved' : ''}`}
-            onClick={onSave}
-          >
-            {saved ? 'Saved ✓' : 'Save for later'}
-          </button>
+          <button className={`btn btn--outline${saved ? ' btn--saved' : ''}`} onClick={onSave}>{saved ? 'Saved ✓' : 'Save for later'}</button>
         </div>
       </div>
     </div>
   )
 }
 
-function StandardCard({ item, onEnquire }) {
+function StandardCard({ item, onEnquire, typeLabel }) {
   return (
     <div className="card">
-      <img src={item.image_url || '/media/placeholder.jpg'} alt={item.name} onError={(e) => { e.target.style.display = 'none' }} />
+      <img src={item.image_url || '/media/placeholder.jpg'} alt={item.name} onError={e => { e.target.style.display = 'none' }} />
       <div className="card-body">
-        <span className={`tag ${item.item_type}`}>{TYPE_LABEL[item.item_type] || item.item_type}</span>
+        <span className={`tag ${item.item_type}`}>{typeLabel || ALL_TYPE_LABELS[item.item_type] || item.item_type}</span>
         <h3>{item.name}</h3>
         <p>{item.description}</p>
         {item.price && <p><strong>{item.price}</strong></p>}
@@ -130,20 +88,36 @@ function StandardCard({ item, onEnquire }) {
 
 export default function Storefront() {
   const [items, setItems] = useState([])
+  const [config, setConfig] = useState(null)
   const [filter, setFilter] = useState('all')
   const [saved, setSaved] = useState(new Set())
 
   useEffect(() => {
     getItems().then(setItems).catch(() => setItems([]))
+    getConfig().then(setConfig).catch(() => setConfig(null))
   }, [])
 
-  const filtered = filter === 'all' ? items : items.filter(i => i.item_type === filter)
+  const typeLabelMap = Object.fromEntries(
+    (config?.mode_config ?? []).map(m => [m.key, m.label])
+  )
+
+  const activeModeConfig = config?.mode_config
+    ? config.mode_config.filter(m => m.active)
+    : Object.keys(ALL_TYPE_LABELS).map(key => ({ key, active: true, emoji: ALL_TYPE_EMOJIS[key] || '', label: ALL_TYPE_LABELS[key] }))
+  const activeModeKeys = new Set(activeModeConfig.map(m => m.key))
+  const activeItems = items.filter(i => activeModeKeys.has(i.item_type))
+  const filtered = filter === 'all' ? activeItems : activeItems.filter(i => i.item_type === filter)
+
+  const activeFilters = [
+    { key: 'all', label: 'All', emoji: '✨' },
+    ...activeModeConfig.map(({ key, emoji, label }) => ({ key, label, emoji })),
+  ]
 
   const handleEnquire = async (item) => {
-    const message = window.prompt(`Send an enquiry about "${item.name}". Tell Jenna a bit about you:`)
+    const message = window.prompt(`Send an enquiry about "${item.name}". Tell us a bit about you:`)
     if (!message) return
     await createEnquiry(item.id, message)
-    window.alert("Enquiry sent! Jenna will review and get back to you. Nothing is confirmed until she approves it.")
+    window.alert("Enquiry sent! We'll review and get back to you. Nothing is confirmed until approved.")
   }
 
   const toggleSave = (id) => {
@@ -154,21 +128,35 @@ export default function Storefront() {
     })
   }
 
+  const heroPhoto = config?.hero_photos?.[0]
+  const businessName = config?.business_name || 'Outdoor Hounds'
+  const tagline = config?.tagline || 'Adopt a friend, join a hike, book a service.'
+
   return (
     <div>
-      <div className="hero">
-        <h1>Outdoor Hounds</h1>
-        <p>Adopt a friend, join a pack hike, book a walk &amp; sit, or bring a mini petting zoo to your next event.</p>
+      {/* Hero */}
+      <div
+        className="hero"
+        style={heroPhoto ? {
+          backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url(${heroPhoto})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          color: '#fff',
+        } : {}}
+      >
+        <h1 style={heroPhoto ? { color: '#fff' } : {}}>{businessName}</h1>
+        <p style={heroPhoto ? { color: 'rgba(255,255,255,0.9)' } : {}}>{tagline}</p>
       </div>
 
+      {/* Filter bar */}
       <div className="filter-bar">
-        {FILTERS.map(({ key, label }) => (
+        {activeFilters.map(({ key, label, emoji }) => (
           <button
             key={key}
             className={`btn filter-btn${filter === key ? ' filter-btn--active' : ''}`}
             onClick={() => setFilter(key)}
           >
-            {label}
+            {emoji} {label}
           </button>
         ))}
       </div>
@@ -180,14 +168,9 @@ export default function Storefront() {
       <div className="grid">
         {filtered.map(item =>
           item.item_type === 'petting_zoo_booking' ? (
-            <PettingZooCard
-              key={item.id}
-              item={item}
-              saved={saved.has(item.id)}
-              onSave={() => toggleSave(item.id)}
-            />
+            <PettingZooCard key={item.id} item={item} saved={saved.has(item.id)} onSave={() => toggleSave(item.id)} />
           ) : (
-            <StandardCard key={item.id} item={item} onEnquire={handleEnquire} />
+            <StandardCard key={item.id} item={item} onEnquire={handleEnquire} typeLabel={typeLabelMap[item.item_type]} />
           )
         )}
       </div>

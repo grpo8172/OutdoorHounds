@@ -7,6 +7,8 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    volumes:
+      - web-uploads-data:/app/web-uploads
     environment:
       DATABASE_URL: mysql+pymysql://app:apppassword@db:3306/outdoor_hounds
       LLM_ENABLED: "false"
@@ -96,3 +98,4 @@ services:
 volumes:
   db-data:
   uploads-data:
+  web-uploads-data:

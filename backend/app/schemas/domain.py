@@ -4,6 +4,28 @@ from datetime import datetime
 
 VALID_ITEM_TYPES = {"pet", "hike", "service", "petting_zoo_booking"}
 
+class ModeConfig(BaseModel):
+    key: str
+    active: bool
+    emoji: str
+    label: str
+
+class OwnerConfigResponse(BaseModel):
+    id: int
+    business_name: str
+    tagline: str
+    mode_config: List[ModeConfig]
+    hero_photos: List[str]
+
+    class Config:
+        from_attributes = True
+
+class OwnerConfigUpdate(BaseModel):
+    business_name: Optional[str] = None
+    tagline: Optional[str] = None
+    mode_config: Optional[List[ModeConfig]] = None
+    hero_photos: Optional[List[str]] = None
+
 class CatalogueItemBase(BaseModel):
     item_type: str
     name: str
