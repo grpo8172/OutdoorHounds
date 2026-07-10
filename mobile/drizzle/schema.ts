@@ -46,6 +46,8 @@ export const catalogueItems = mysqlTable("catalogue_items", {
     .default("draft")
     .notNull(),
   listingMeta: json("listing_meta"),
+  lat: decimal("lat", { precision: 10, scale: 7 }),
+  lng: decimal("lng", { precision: 10, scale: 7 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

@@ -15,6 +15,9 @@ class OwnerConfigResponse(BaseModel):
     business_name: str
     site_emoji: str = "🐾"
     tagline: str
+    chat_greeting: Optional[str] = None
+    chat_placeholder: Optional[str] = None
+    chat_disclaimer: Optional[str] = None
     mode_config: List[ModeConfig]
     hero_photos: List[str]
 
@@ -25,6 +28,9 @@ class OwnerConfigUpdate(BaseModel):
     business_name: Optional[str] = None
     site_emoji: Optional[str] = None
     tagline: Optional[str] = None
+    chat_greeting: Optional[str] = None
+    chat_placeholder: Optional[str] = None
+    chat_disclaimer: Optional[str] = None
     mode_config: Optional[List[ModeConfig]] = None
     hero_photos: Optional[List[str]] = None
 

@@ -36,7 +36,11 @@ function writeCache(data) {
 export default function OwnerSetup() {
   const [config, setConfig] = useState(() => readCache() ?? mergeConfig({
     business_name: 'Outdoor Hounds',
+    site_emoji: '🐾',
     tagline: 'Adopt a friend, join a hike, book a service.',
+    chat_greeting: '',
+    chat_placeholder: '',
+    chat_disclaimer: '',
     mode_config: [],
     hero_photos: [],
   }))
@@ -83,6 +87,9 @@ export default function OwnerSetup() {
         business_name: config.business_name,
         site_emoji: config.site_emoji,
         tagline: config.tagline,
+        chat_greeting: config.chat_greeting,
+        chat_placeholder: config.chat_placeholder,
+        chat_disclaimer: config.chat_disclaimer,
         mode_config: config.mode_config,
         hero_photos: config.hero_photos,
       })
@@ -181,6 +188,40 @@ export default function OwnerSetup() {
         )}
       </section>
 
+      {/* Chat assistant */}
+      <section style={sectionStyle}>
+        <h3 style={headingStyle}>Chat assistant</h3>
+        <p style={{ fontSize: '0.85rem', color: '#777', margin: '0 0 1rem' }}>
+          Customise what your "Ask Us" assistant says. Leave blank to use the defaults.
+        </p>
+
+        <label style={labelStyle}>Opening greeting</label>
+        <textarea
+          rows={3}
+          style={{ ...inputStyle, resize: 'vertical' }}
+          value={config.chat_greeting || ''}
+          onChange={e => setConfig({ ...config, chat_greeting: e.target.value })}
+          placeholder={`e.g. Hi! I'm the ${config.business_name} assistant. Ask me anything about our listings.`}
+        />
+
+        <label style={{ ...labelStyle, marginTop: '0.9rem' }}>Input placeholder text</label>
+        <input
+          style={inputStyle}
+          value={config.chat_placeholder || ''}
+          onChange={e => setConfig({ ...config, chat_placeholder: e.target.value })}
+          placeholder="e.g. Ask about our hikes, pets or services…"
+        />
+
+        <label style={{ ...labelStyle, marginTop: '0.9rem' }}>Disclaimer / footer note</label>
+        <textarea
+          rows={2}
+          style={{ ...inputStyle, resize: 'vertical' }}
+          value={config.chat_disclaimer || ''}
+          onChange={e => setConfig({ ...config, chat_disclaimer: e.target.value })}
+          placeholder="e.g. This assistant can't confirm bookings — contact us directly to arrange."
+        />
+      </section>
+
       {/* Hero photos */}
       <section style={sectionStyle}>
         <h3 style={headingStyle}>
@@ -229,3 +270,4 @@ export default function OwnerSetup() {
 const sectionStyle = { marginBottom: '2rem', paddingBottom: '2rem', borderBottom: '1px solid #f0ece4' }
 const headingStyle = { fontSize: '1rem', fontWeight: '600', marginBottom: '0.75rem', color: '#2c2c2c' }
 const inputStyle = { width: '100%', padding: '0.6rem 0.9rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.95rem', boxSizing: 'border-box' }
+const labelStyle = { display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#555', marginBottom: '0.4rem' }

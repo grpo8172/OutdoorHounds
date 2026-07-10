@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql, isNotNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { catalogueItems } from "../drizzle/schema";
@@ -54,6 +54,16 @@ const listingMetaSchema = z
   })
   .optional();
 
+async function geocode(location: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`;
+    const res = await fetch(url, { headers: { "User-Agent": "OutdoorHoundsApp/1.0 (contact@outdoorhounds.app)" } });
+    const data = await res.json() as Array<{ lat: string; lon: string }>;
+    if (data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch {}
+  return null;
+}
+
 export const itemsRouter = router({
   /** All approved listings (used for admin views). */
   list: publicProcedure.query(async () => {
@@ -73,21 +83,34 @@ export const itemsRouter = router({
           "stalls_and_shops",
           "lost_and_found",
         ]),
+        lat: z.number().optional(),
+        lng: z.number().optional(),
+        radiusKm: z.number().optional(),
       }),
     )
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
       const types = LEGACY_ITEM_TYPES[input.mode] ?? [MODE_TO_ITEM_TYPE[input.mode]];
-      return db
-        .select()
-        .from(catalogueItems)
-        .where(
-          and(
-            eq(catalogueItems.status, "approved"),
-            inArray(catalogueItems.itemType, types),
-          ),
+
+      const conditions = [
+        eq(catalogueItems.status, "approved"),
+        inArray(catalogueItems.itemType, types),
+      ];
+
+      if (input.lat != null && input.lng != null && input.radiusKm != null) {
+        // Haversine formula — only filters listings that have coordinates; ones without lat/lng are always included
+        conditions.push(
+          sql`(${catalogueItems.lat} IS NULL OR ${catalogueItems.lng} IS NULL OR
+            (6371 * acos(LEAST(1.0,
+              cos(radians(${input.lat})) * cos(radians(${catalogueItems.lat})) *
+              cos(radians(${catalogueItems.lng}) - radians(${input.lng})) +
+              sin(radians(${input.lat})) * sin(radians(${catalogueItems.lat}))
+            ))) <= ${input.radiusKm})`
         );
+      }
+
+      return db.select().from(catalogueItems).where(and(...conditions));
     }),
 
   listPending: adminProcedure.query(async () => {
@@ -167,11 +190,15 @@ export const itemsRouter = router({
       const { mode, imageUrls, videoUrl, location, breed, age, contact, ...rest } = input;
       const photos = imageUrls?.filter(Boolean) ?? [];
 
+      const coords = location ? await geocode(location) : null;
+
       await db.insert(catalogueItems).values({
         ...rest,
         userId: ctx.user.id,
         itemType: MODE_TO_ITEM_TYPE[mode],
         imageUrl: photos[0] || undefined,
+        lat: coords?.lat?.toString() ?? null,
+        lng: coords?.lng?.toString() ?? null,
         listingMeta: {
           photos,
           videoUrl: videoUrl || undefined,

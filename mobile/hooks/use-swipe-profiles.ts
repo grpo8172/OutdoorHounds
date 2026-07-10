@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { Profile, AppMode, mockProfiles } from "@/lib/mockData";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "./use-auth";
+import { useLocation } from "@/lib/location-context";
 
 // Reverse mapping: itemType stored in DB → AppMode used in the client
 const ITEM_TYPE_TO_MODE: Record<string, AppMode> = {
@@ -73,12 +74,18 @@ export interface UseSwipeProfilesReturn {
 
 export function useSwipeProfiles(mode: AppMode = "adopt_or_foster"): UseSwipeProfilesReturn {
   const { user } = useAuth();
+  const { lat, lng, radiusKm, enabled: locationEnabled } = useLocation();
   const saveItemMutation = trpc.messages.saveItem.useMutation();
 
   const query = trpc.items.listByMode.useQuery(
-    { mode },
     {
-      retry: false,        // fail fast when backend is down → instant mock fallback
+      mode,
+      lat: locationEnabled && lat != null ? lat : undefined,
+      lng: locationEnabled && lng != null ? lng : undefined,
+      radiusKm: locationEnabled ? radiusKm : undefined,
+    },
+    {
+      retry: false,
       staleTime: 60_000,
     },
   );

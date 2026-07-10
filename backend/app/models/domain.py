@@ -61,6 +61,9 @@ class OwnerConfig(Base):
     business_name = Column(String(255), default="Outdoor Hounds")
     site_emoji = Column(String(16), default="🐾")
     tagline = Column(String(512), default="Adopt a friend, join a hike, book a service.")
+    chat_greeting = Column(Text, nullable=True)
+    chat_placeholder = Column(String(255), nullable=True)
+    chat_disclaimer = Column(Text, nullable=True)
     # Full mode config — each entry: {key, active, emoji, label}
     mode_config = Column(JSON, default=lambda: [
         {"key": "pet",                 "active": True, "emoji": "🐾", "label": "Adopt / Foster"},

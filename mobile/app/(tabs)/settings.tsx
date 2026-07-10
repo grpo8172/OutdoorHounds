@@ -1,6 +1,7 @@
-import { ScrollView, Text, View, Pressable, Switch } from "react-native";
+import { ScrollView, Text, View, Pressable, Switch, ActivityIndicator } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "@/lib/location-context";
 import { trpc } from "@/lib/trpc";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -20,9 +21,9 @@ const PROFILE_TYPE_LABELS: Record<string, string> = {
 
 export default function SettingsScreen() {
   const { user, logout, devLogin } = useAuth();
+  const { lat, lng, radiusKm, enabled: locationEnabled, loading: locationLoading, error: locationError, requestLocation, setRadius, disable: disableLocation } = useLocation();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
-  const [maxDistance, setMaxDistance] = useState("25");
 
   const profileQuery = trpc.profiles.getMyProfile.useQuery(undefined, {
     enabled: !!user,
@@ -155,34 +156,59 @@ export default function SettingsScreen() {
             />
           </View>
 
-          {/* Distance Filter */}
-          <View className="bg-surface rounded-lg p-4 border border-border">
-            <Text className="text-base font-semibold text-foreground mb-3">
-              Search Radius
-            </Text>
-            <View className="flex-row gap-2 flex-wrap">
-              {["5", "10", "25", "50"].map((distance) => (
+          {/* Location & Search Radius */}
+          <View className="bg-surface rounded-lg p-4 border border-border" style={{ gap: 12 }}>
+            <Text className="text-base font-semibold text-foreground">Search Radius</Text>
+
+            {/* Toggle */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View style={{ flex: 1 }}>
+                <Text className="text-sm text-foreground" style={{ fontWeight: "500" }}>
+                  {locationEnabled ? `📍 Using your location` : "Use my location"}
+                </Text>
+                {locationEnabled && lat != null && (
+                  <Text className="text-xs text-muted" style={{ marginTop: 2 }}>
+                    {lat.toFixed(4)}, {lng?.toFixed(4)}
+                  </Text>
+                )}
+                {locationError && (
+                  <Text style={{ fontSize: 12, color: "#dc2626", marginTop: 2 }}>{locationError}</Text>
+                )}
+              </View>
+              {locationLoading ? (
+                <ActivityIndicator size="small" color="#e8843c" />
+              ) : (
+                <Switch
+                  value={locationEnabled}
+                  onValueChange={v => v ? requestLocation() : disableLocation()}
+                  trackColor={{ false: "#767577", true: "#e8843c" }}
+                />
+              )}
+            </View>
+
+            {/* Radius buttons — only active when location is on */}
+            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", opacity: locationEnabled ? 1 : 0.4 }}>
+              {[5, 10, 25, 50].map((km) => (
                 <Pressable
-                  key={distance}
-                  onPress={() => setMaxDistance(distance)}
-                  className={`rounded-lg px-4 py-2 ${
-                    maxDistance === distance
-                      ? "bg-primary"
-                      : "bg-background border border-border"
-                  }`}
+                  key={km}
+                  onPress={() => locationEnabled && setRadius(km)}
+                  style={{
+                    borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8,
+                    backgroundColor: radiusKm === km && locationEnabled ? "#e8843c" : "transparent",
+                    borderWidth: 1,
+                    borderColor: radiusKm === km && locationEnabled ? "#e8843c" : "#e5e7eb",
+                  }}
                 >
-                  <Text
-                    className={`font-semibold ${
-                      maxDistance === distance
-                        ? "text-background"
-                        : "text-foreground"
-                    }`}
-                  >
-                    {distance}km
+                  <Text style={{ fontWeight: "600", color: radiusKm === km && locationEnabled ? "#fff" : "#374151" }}>
+                    {km}km
                   </Text>
                 </Pressable>
               ))}
             </View>
+
+            {!locationEnabled && (
+              <Text className="text-xs text-muted">Enable location to filter listings by distance.</Text>
+            )}
           </View>
         </View>
 

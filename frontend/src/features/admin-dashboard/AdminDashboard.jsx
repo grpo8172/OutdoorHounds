@@ -145,14 +145,12 @@ export default function AdminDashboard() {
   const [pending, setPending] = useState([])
   const [published, setPublished] = useState([])
   const [enquiries, setEnquiries] = useState([])
-  const [audit, setAudit] = useState([])
   const [approveTarget, setApproveTarget] = useState(null)
 
   const load = () => {
     fetch('/api/items/pending').then(r => r.json()).then(setPending).catch(() => setPending([]))
     fetch('/api/items').then(r => r.json()).then(setPublished).catch(() => setPublished([]))
     fetch('/api/enquiries').then(r => r.json()).then(setEnquiries).catch(() => setEnquiries([]))
-    fetch('/api/audit').then(r => r.json()).then(setAudit).catch(() => setAudit([]))
   }
 
   useEffect(load, [])
@@ -183,7 +181,6 @@ export default function AdminDashboard() {
     { id: 'listings', label: `Listings${pending.length ? ` (${pending.length} pending)` : ''}` },
     { id: 'enquiries', label: `Enquiries${pendingEnquiries.length ? ` (${pendingEnquiries.length})` : ''}` },
     { id: 'calendar', label: 'Calendar' },
-    { id: 'audit', label: 'Audit Trail' },
   ]
 
   return (
@@ -336,26 +333,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ── Audit tab ── */}
-      {tab === 'audit' && (
-        <div>
-          <div className="banner" style={{ marginBottom: '1rem' }}>Every approval and state change is recorded here.</div>
-          {audit.length === 0
-            ? <p style={{ color: '#9ca3af' }}>No audit events yet.</p>
-            : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {audit.map(e => (
-                  <div key={e.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.75rem 1rem', fontSize: '0.875rem' }}>
-                    <span style={{ fontWeight: 600, color: '#374151' }}>{e.event_type}</span>
-                    <span style={{ color: '#6b7280' }}> — {e.details}</span>
-                    <span style={{ color: '#9ca3af', fontSize: '0.75rem', display: 'block', marginTop: 2 }}>{new Date(e.created_at).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            )
-          }
-        </div>
-      )}
     </div>
   )
 }
