@@ -124,23 +124,12 @@ export default function DiscoverScreen() {
             </Pressable>
           </View>
 
-          {/* Stats */}
-          <View className="flex-row justify-between bg-surface rounded-lg p-4 border border-border">
-            <View className="items-center">
-              <Text className="text-2xl font-bold text-primary">{savedListings.length}</Text>
-              <Text className="text-xs text-muted">Saved</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-2xl font-bold text-foreground">{currentIndex + 1}</Text>
-              <Text className="text-xs text-muted">Viewed</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-2xl font-bold text-muted">
-                {totalProfiles - currentIndex - 1}
-              </Text>
-              <Text className="text-xs text-muted">Remaining</Text>
-            </View>
-          </View>
+          {/* Saved count */}
+          {savedListings.length > 0 && (
+            <Text style={{ textAlign: "center", fontSize: 12, color: "#9ca3af" }}>
+              {savedListings.length} saved so far
+            </Text>
+          )}
         </View>
       </ScrollView>
     </ScreenContainer>

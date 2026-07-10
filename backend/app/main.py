@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import os
@@ -160,7 +160,14 @@ def assistant_setup(prompt: str, llm: LLMProvider = Depends(get_llm_provider)):
     return {"proposed_setup": result, "status": "draft"}
 
 
-# Mount built frontend for single-container/GKE serving (no-op during local dev).
+# Serve built frontend — catch-all so React Router handles /items/:id etc.
 frontend_dist = os.path.join(os.path.dirname(__file__), "../../frontend/dist")
-if os.path.exists(frontend_dist):
-    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="static")
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_spa(full_path: str):
+    if os.path.exists(frontend_dist):
+        file_path = os.path.join(frontend_dist, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
+    raise HTTPException(status_code=404)
