@@ -11,6 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
+import { ImagePickerField } from "@/components/image-picker-field";
 import { useAuth } from "@/hooks/use-auth";
 import { startOAuthLogin } from "@/constants/oauth";
 import { trpc } from "@/lib/trpc";
@@ -24,8 +25,6 @@ const EMPTY_FORM = {
   name: "",
   description: "",
   price: "",
-  imageUrl: "",
-  videoUrl: "",
   location: "",
   breed: "",
   age: "",
@@ -237,6 +236,9 @@ export default function CreateListingScreen() {
 
 function ListingForm() {
   const [form, setForm] = useState(EMPTY_FORM);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const set = (key: keyof typeof EMPTY_FORM) => (v: string) =>
@@ -268,8 +270,8 @@ function ListingForm() {
       name: form.name.trim(),
       description: form.description.trim(),
       price: form.price.trim() || undefined,
-      imageUrl: form.imageUrl.trim() || undefined,
-      videoUrl: form.videoUrl.trim() || undefined,
+      imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+      videoUrl: videoUrl || undefined,
       location: form.location.trim() || undefined,
       breed: form.breed.trim() || undefined,
       age: modeFields?.showAge && !isNaN(ageNum) ? ageNum : undefined,
@@ -288,7 +290,7 @@ function ListingForm() {
             {selectedMode ? MODES.find((m) => m.id === selectedMode)?.title : ""} feed.
           </Text>
           <Pressable
-            onPress={() => { setForm(EMPTY_FORM); setSubmitted(false); }}
+            onPress={() => { setForm(EMPTY_FORM); setImageUrls([]); setVideoUrl(null); setSubmitted(false); }}
             className="rounded-xl px-6 py-3 mt-2 active:opacity-80"
             style={{ backgroundColor: "#e8843c" }}
           >
@@ -423,24 +425,60 @@ function ListingForm() {
             />
           </Field>
 
-          {/* Photo URL */}
-          <Field label="Photo URL (optional)">
-            <Input
-              value={form.imageUrl}
-              onChangeText={set("imageUrl")}
-              placeholder="https://..."
-              keyboardType="url"
-            />
+          {/* Photos */}
+          <Field label="Photos (optional)">
+            <ImagePickerField urls={imageUrls} onChange={setImageUrls} />
           </Field>
 
-          {/* Video URL */}
-          <Field label="Video URL (optional)">
-            <Input
-              value={form.videoUrl}
-              onChangeText={set("videoUrl")}
-              placeholder="YouTube, Vimeo, or direct link"
-              keyboardType="url"
-            />
+          {/* Video clip */}
+          <Field label="Short video clip (optional)">
+            {videoUrl ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, backgroundColor: "#f9fafb", borderRadius: 10, borderWidth: 1, borderColor: "#e5e7eb" }}>
+                <Text style={{ flex: 1, fontSize: 13, color: "#374151" }}>🎬 Clip uploaded</Text>
+                <Pressable onPress={() => setVideoUrl(null)}>
+                  <Text style={{ color: "#dc2626", fontSize: 13, fontWeight: "600" }}>Remove</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = "video/*";
+                  input.onchange = async () => {
+                    const file = input.files?.[0];
+                    if (!file) return;
+                    setVideoUploading(true);
+                    try {
+                      const fd = new FormData();
+                      fd.append("files", file);
+                      const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+                      const data = await res.json();
+                      setVideoUrl(data.urls?.[0] ?? null);
+                    } catch { /* ignore */ } finally {
+                      setVideoUploading(false);
+                    }
+                  };
+                  input.click();
+                }}
+                disabled={videoUploading}
+                style={({ pressed }) => ({
+                  borderWidth: 2, borderColor: pressed ? "#e8843c" : "#ddd5c4",
+                  borderStyle: "dashed", borderRadius: 12, paddingVertical: 14,
+                  alignItems: "center", gap: 4,
+                  backgroundColor: pressed ? "#fff7f0" : "transparent",
+                })}
+              >
+                {videoUploading
+                  ? <ActivityIndicator color="#e8843c" />
+                  : <>
+                      <Text style={{ fontSize: 22 }}>🎬</Text>
+                      <Text style={{ color: "#e8843c", fontWeight: "600", fontSize: 13 }}>Add a short clip</Text>
+                      <Text style={{ color: "#9ca3af", fontSize: 11 }}>Tap to select a video from your device</Text>
+                    </>
+                }
+              </Pressable>
+            )}
           </Field>
 
           {/* Submit */}

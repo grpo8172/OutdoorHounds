@@ -136,7 +136,7 @@ export const itemsRouter = router({
         name: z.string().min(1),
         description: z.string().min(1),
         price: z.string().optional(),
-        imageUrl: z.string().optional(),
+        imageUrls: z.array(z.string()).optional(),
         videoUrl: z.string().optional(),
         location: z.string().optional(),
         breed: z.string().optional(),
@@ -164,15 +164,16 @@ export const itemsRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const { mode, imageUrl, videoUrl, location, breed, age, contact, ...rest } = input;
+      const { mode, imageUrls, videoUrl, location, breed, age, contact, ...rest } = input;
+      const photos = imageUrls?.filter(Boolean) ?? [];
 
       await db.insert(catalogueItems).values({
         ...rest,
         userId: ctx.user.id,
         itemType: MODE_TO_ITEM_TYPE[mode],
-        imageUrl: imageUrl || undefined,
+        imageUrl: photos[0] || undefined,
         listingMeta: {
-          photos:   imageUrl ? [imageUrl] : [],
+          photos,
           videoUrl: videoUrl || undefined,
           location: location || undefined,
           breed:    breed    || undefined,
