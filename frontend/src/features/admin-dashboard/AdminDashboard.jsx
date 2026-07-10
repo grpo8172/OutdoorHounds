@@ -1,47 +1,365 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
+
+const TYPE_LABELS = {
+  pet: 'Adopt / Foster', hike: 'Group Hike', service: 'Pet Services',
+  petting_zoo_booking: 'Petting Zoo', event: 'Pet Event',
+  stall: 'Stall / Shop', lost_found: 'Lost & Found',
+}
+
+const MONTHS = ['January','February','March','April','May','June',
+  'July','August','September','October','November','December']
+const DAY_HEADERS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+
+// ── Calendar ─────────────────────────────────────────────────────────────────
+
+function Calendar({ bookings, items }) {
+  const today = new Date()
+  const [year, setYear] = useState(today.getFullYear())
+  const [month, setMonth] = useState(today.getMonth())
+  const [selected, setSelected] = useState(null)
+
+  const itemMap = useMemo(() => Object.fromEntries(items.map(i => [i.id, i])), [items])
+
+  const byDay = useMemo(() => {
+    const map = {}
+    bookings.filter(b => b.status === 'approved' && b.booking_date).forEach(b => {
+      const d = new Date(b.booking_date + 'T00:00:00')
+      if (d.getFullYear() === year && d.getMonth() === month) {
+        const day = d.getDate()
+        if (!map[day]) map[day] = []
+        map[day].push(b)
+      }
+    })
+    return map
+  }, [bookings, year, month])
+
+  const totalDays = new Date(year, month + 1, 0).getDate()
+  const startOffset = (new Date(year, month, 1).getDay() + 6) % 7
+  const cells = [
+    ...Array(startOffset).fill(null),
+    ...Array.from({ length: totalDays }, (_, i) => i + 1),
+  ]
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  const isToday = d => d === today.getDate() && month === today.getMonth() && year === today.getFullYear()
+
+  return (
+    <div>
+      {/* Nav */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+        <button onClick={() => month === 0 ? (setMonth(11), setYear(y => y-1)) : setMonth(m => m-1)} style={navBtnStyle}>‹</button>
+        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, minWidth: 160, textAlign: 'center' }}>{MONTHS[month]} {year}</h3>
+        <button onClick={() => month === 11 ? (setMonth(0), setYear(y => y+1)) : setMonth(m => m+1)} style={navBtnStyle}>›</button>
+        <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: '#9ca3af' }}>
+          {Object.values(byDay).flat().length} booking{Object.values(byDay).flat().length !== 1 ? 's' : ''} this month
+        </span>
+      </div>
+
+      {/* Day headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, marginBottom: 3 }}>
+        {DAY_HEADERS.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontSize: '0.72rem', fontWeight: 600, color: '#9ca3af', paddingBottom: 4 }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3 }}>
+        {cells.map((day, i) => {
+          const dayBookings = day ? (byDay[day] || []) : []
+          return (
+            <div
+              key={i}
+              onClick={() => day && dayBookings.length && setSelected(selected === day ? null : day)}
+              style={{
+                minHeight: 80,
+                borderRadius: 8,
+                border: `1.5px solid ${day && isToday(day) ? '#e8843c' : '#e5e7eb'}`,
+                backgroundColor: day ? (isToday(day) ? '#fff7f0' : '#fff') : '#f9fafb',
+                padding: '6px 5px',
+                cursor: day && dayBookings.length ? 'pointer' : 'default',
+                transition: 'box-shadow 0.1s',
+                boxShadow: selected === day ? '0 0 0 2px #e8843c' : 'none',
+              }}
+            >
+              {day && (
+                <>
+                  <div style={{ fontSize: '0.78rem', fontWeight: isToday(day) ? 700 : 500, color: isToday(day) ? '#e8843c' : '#374151', marginBottom: 3 }}>{day}</div>
+                  {dayBookings.map(b => (
+                    <div key={b.id} style={{ fontSize: '0.65rem', background: '#e8843c', color: '#fff', borderRadius: 4, padding: '1px 4px', marginBottom: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
+                      title={itemMap[b.item_id]?.name || b.message}>
+                      {itemMap[b.item_id]?.name || `#${b.id}`}
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Day detail panel */}
+      {selected && byDay[selected] && (
+        <div style={{ marginTop: '1rem', background: '#fff7f0', border: '1px solid #e8843c', borderRadius: 12, padding: '1rem' }}>
+          <strong style={{ color: '#e8843c' }}>{MONTHS[month]} {selected} — {byDay[selected].length} booking{byDay[selected].length !== 1 ? 's' : ''}</strong>
+          {byDay[selected].map(b => (
+            <div key={b.id} style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #fde4cc' }}>
+              <div style={{ fontWeight: 600 }}>{itemMap[b.item_id]?.name || 'Listing'}</div>
+              <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: 2 }}>{b.message}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Approve modal ─────────────────────────────────────────────────────────────
+
+function ApproveModal({ enquiry, itemName, onConfirm, onCancel }) {
+  const [date, setDate] = useState('')
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div style={{ background: '#fff', borderRadius: 16, padding: '1.5rem', maxWidth: 400, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+        <h3 style={{ margin: '0 0 0.5rem' }}>Approve booking</h3>
+        <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: '0 0 1rem' }}>
+          <strong>{itemName}</strong><br />"{enquiry.message}"
+        </p>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>
+          Booking date (optional)
+        </label>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)}
+          style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.95rem', boxSizing: 'border-box', marginBottom: '1rem' }} />
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button className="btn" style={{ flex: 1, background: '#e8843c' }} onClick={() => onConfirm(date || null)}>Approve</button>
+          <button className="btn btn--outline" style={{ flex: 1 }} onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main dashboard ────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
+  const [tab, setTab] = useState('listings')
   const [pending, setPending] = useState([])
+  const [published, setPublished] = useState([])
+  const [enquiries, setEnquiries] = useState([])
   const [audit, setAudit] = useState([])
+  const [approveTarget, setApproveTarget] = useState(null)
 
   const load = () => {
     fetch('/api/items/pending').then(r => r.json()).then(setPending).catch(() => setPending([]))
+    fetch('/api/items').then(r => r.json()).then(setPublished).catch(() => setPublished([]))
+    fetch('/api/enquiries').then(r => r.json()).then(setEnquiries).catch(() => setEnquiries([]))
     fetch('/api/audit').then(r => r.json()).then(setAudit).catch(() => setAudit([]))
   }
 
   useEffect(load, [])
 
-  const approve = async (id) => {
+  const approveListing = async (id) => {
     await fetch(`/api/items/${id}/approve`, { method: 'POST' })
     load()
   }
 
+  const approveEnquiry = async (id, bookingDate) => {
+    const url = `/api/enquiries/${id}/decide?approve=true${bookingDate ? `&booking_date=${bookingDate}` : ''}`
+    await fetch(url, { method: 'POST' })
+    setApproveTarget(null)
+    load()
+  }
+
+  const rejectEnquiry = async (id) => {
+    await fetch(`/api/enquiries/${id}/decide?approve=false`, { method: 'POST' })
+    load()
+  }
+
+  const allItems = [...pending, ...published]
+  const itemMap = Object.fromEntries(allItems.map(i => [i.id, i]))
+  const pendingEnquiries = enquiries.filter(e => e.status === 'pending')
+  const approvedBookings = enquiries.filter(e => e.status === 'approved')
+
+  const TABS = [
+    { id: 'listings', label: `Listings${pending.length ? ` (${pending.length} pending)` : ''}` },
+    { id: 'enquiries', label: `Enquiries${pendingEnquiries.length ? ` (${pendingEnquiries.length})` : ''}` },
+    { id: 'calendar', label: 'Calendar' },
+    { id: 'audit', label: 'Audit Trail' },
+  ]
+
   return (
     <div>
-      <h2>Admin Dashboard</h2>
-      <div className="banner">Human-in-the-loop: AI proposals stay in <strong>pending_review</strong> until you approve them here. Every approval is recorded in the audit trail.</div>
+      {approveTarget && (
+        <ApproveModal
+          enquiry={approveTarget}
+          itemName={itemMap[approveTarget.item_id]?.name || 'Listing'}
+          onConfirm={date => approveEnquiry(approveTarget.id, date)}
+          onCancel={() => setApproveTarget(null)}
+        />
+      )}
 
-      <h3 style={{ marginTop: '1.5rem' }}>Pending Review</h3>
-      {pending.length === 0 && <p>Nothing pending.</p>}
-      <div className="grid">
-        {pending.map(item => (
-          <div className="card" key={item.id}>
-            <div className="card-body">
-              <span className={`tag ${item.item_type}`}>{item.item_type}</span>
-              <h3>{item.name}</h3>
-              <p>{item.description}</p>
-              <button className="btn" onClick={() => approve(item.id)}>Approve & Publish</button>
-            </div>
+      <h2 style={{ marginBottom: '0.25rem' }}>Admin Dashboard</h2>
+      <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+        Approve listings, manage bookings, and view your calendar.
+      </p>
+
+      {/* Stats row */}
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.75rem' }}>
+        {[
+          { label: 'Published', value: published.length, color: '#16a34a' },
+          { label: 'Pending listings', value: pending.length, color: '#e8843c' },
+          { label: 'Pending enquiries', value: pendingEnquiries.length, color: '#7b5ea7' },
+          { label: 'Approved bookings', value: approvedBookings.length, color: '#0ea5e9' },
+        ].map(s => (
+          <div key={s.label} style={{ flex: '1 1 120px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '0.9rem 1rem' }}>
+            <div style={{ fontSize: '1.6rem', fontWeight: 700, color: s.color }}>{s.value}</div>
+            <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2 }}>{s.label}</div>
           </div>
         ))}
       </div>
 
-      <h3 style={{ marginTop: '2rem' }}>Audit Trail</h3>
-      <ul>
-        {audit.map(e => (
-          <li key={e.id}><strong>{e.event_type}</strong> — {e.details} <em>({new Date(e.created_at).toLocaleString()})</em></li>
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            padding: '0.6rem 1rem', fontSize: '0.875rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+            background: 'none', borderBottom: `2.5px solid ${tab === t.id ? '#e8843c' : 'transparent'}`,
+            color: tab === t.id ? '#e8843c' : '#6b7280',
+          }}>{t.label}</button>
         ))}
-      </ul>
+      </div>
+
+      {/* ── Listings tab ── */}
+      {tab === 'listings' && (
+        <div>
+          {pending.length > 0 && (
+            <>
+              <h3 style={sectionHead}>Pending Approval</h3>
+              <div className="grid">
+                {pending.map(item => (
+                  <div className="card" key={item.id}>
+                    {item.image_url && <img src={item.image_url} alt={item.name} onError={e => e.target.style.display='none'} />}
+                    <div className="card-body">
+                      <span className={`tag ${item.item_type}`}>{TYPE_LABELS[item.item_type] || item.item_type}</span>
+                      <h3>{item.name}</h3>
+                      <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>{item.description}</p>
+                      {item.price && <p style={{ fontWeight: 600, color: '#e8843c' }}>{item.price}</p>}
+                      <button className="btn" style={{ background: '#e8843c', marginTop: '0.5rem' }} onClick={() => approveListing(item.id)}>
+                        Approve & Publish
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          <h3 style={{ ...sectionHead, marginTop: pending.length ? '2rem' : 0 }}>Published Listings ({published.length})</h3>
+          {published.length === 0
+            ? <p style={{ color: '#9ca3af' }}>No published listings yet.</p>
+            : (
+              <div className="grid">
+                {published.map(item => (
+                  <div className="card" key={item.id} style={{ opacity: 0.85 }}>
+                    {item.image_url && <img src={item.image_url} alt={item.name} onError={e => e.target.style.display='none'} />}
+                    <div className="card-body">
+                      <span className={`tag ${item.item_type}`}>{TYPE_LABELS[item.item_type] || item.item_type}</span>
+                      <h3>{item.name}</h3>
+                      <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>{item.description}</p>
+                      {item.price && <p style={{ fontWeight: 600, color: '#e8843c' }}>{item.price}</p>}
+                      <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>✓ Live</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          }
+        </div>
+      )}
+
+      {/* ── Enquiries tab ── */}
+      {tab === 'enquiries' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {pendingEnquiries.length === 0 && approvedBookings.length === 0 && (
+            <p style={{ color: '#9ca3af' }}>No enquiries yet.</p>
+          )}
+
+          {pendingEnquiries.length > 0 && (
+            <>
+              <h3 style={sectionHead}>Needs a Response</h3>
+              {pendingEnquiries.map(e => (
+                <div key={e.id} style={enquiryCard}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{itemMap[e.item_id]?.name || `Listing #${e.item_id}`}</div>
+                    <div style={{ fontSize: '0.85rem', color: '#374151', margin: '0.3rem 0' }}>"{e.message}"</div>
+                    <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{new Date(e.created_at).toLocaleString()}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'flex-start' }}>
+                    <button className="btn" style={{ background: '#e8843c', fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={() => setApproveTarget(e)}>Approve</button>
+                    <button className="btn btn--outline" style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', color: '#dc2626', borderColor: '#dc2626' }} onClick={() => rejectEnquiry(e.id)}>Decline</button>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {approvedBookings.length > 0 && (
+            <>
+              <h3 style={{ ...sectionHead, marginTop: pendingEnquiries.length ? '1.5rem' : 0 }}>Approved Bookings</h3>
+              {approvedBookings.map(e => (
+                <div key={e.id} style={{ ...enquiryCard, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{itemMap[e.item_id]?.name || `Listing #${e.item_id}`}</div>
+                    <div style={{ fontSize: '0.85rem', color: '#374151', margin: '0.3rem 0' }}>"{e.message}"</div>
+                    {e.booking_date && (
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#16a34a' }}>
+                        📅 {new Date(e.booking_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
+                      </div>
+                    )}
+                  </div>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#16a34a', padding: '0.2rem 0.6rem', background: '#dcfce7', borderRadius: 20 }}>✓ Approved</span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Calendar tab ── */}
+      {tab === 'calendar' && (
+        <div>
+          {approvedBookings.filter(b => b.booking_date).length === 0 && (
+            <div className="banner" style={{ marginBottom: '1.25rem' }}>
+              No bookings have a date yet. Approve an enquiry and set a date to see it here.
+            </div>
+          )}
+          <Calendar bookings={enquiries} items={allItems} />
+        </div>
+      )}
+
+      {/* ── Audit tab ── */}
+      {tab === 'audit' && (
+        <div>
+          <div className="banner" style={{ marginBottom: '1rem' }}>Every approval and state change is recorded here.</div>
+          {audit.length === 0
+            ? <p style={{ color: '#9ca3af' }}>No audit events yet.</p>
+            : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {audit.map(e => (
+                  <div key={e.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.75rem 1rem', fontSize: '0.875rem' }}>
+                    <span style={{ fontWeight: 600, color: '#374151' }}>{e.event_type}</span>
+                    <span style={{ color: '#6b7280' }}> — {e.details}</span>
+                    <span style={{ color: '#9ca3af', fontSize: '0.75rem', display: 'block', marginTop: 2 }}>{new Date(e.created_at).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          }
+        </div>
+      )}
     </div>
   )
 }
+
+const sectionHead = { fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem', color: '#374151' }
+const navBtnStyle = { background: '#f3f4f6', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: '1.1rem', fontWeight: 700, color: '#374151' }
+const enquiryCard = { display: 'flex', alignItems: 'flex-start', gap: '1rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '1rem 1.25rem' }

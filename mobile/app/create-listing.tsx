@@ -485,8 +485,11 @@ function ListingForm() {
           <Pressable
             onPress={handleSubmit}
             disabled={!isValid || submitMutation.isPending}
-            className="rounded-xl py-4 items-center active:opacity-80 mt-2"
             style={{
+              borderRadius: 16,
+              paddingVertical: 16,
+              alignItems: "center",
+              marginTop: 8,
               backgroundColor: isValid ? "#e8843c" : "rgba(122, 106, 88, 0.3)",
             }}
           >

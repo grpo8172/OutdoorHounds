@@ -57,8 +57,9 @@ class EnquiryResponse(EnquiryBase):
     id: int
     user_id: int
     status: str
+    booking_date: Optional[str] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 

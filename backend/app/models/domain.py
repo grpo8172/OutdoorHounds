@@ -36,6 +36,7 @@ class Enquiry(Base):
     item_id = Column(Integer, ForeignKey("catalogue_items.id"))
     message = Column(Text)
     status = Column(String(32), default="pending")
+    booking_date = Column(String(10), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User")

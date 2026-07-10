@@ -96,7 +96,7 @@ export default function HomeScreen() {
           <View style={{ flex: 1 }}>
             <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Visit the Website</Text>
             <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 2 }}>
-              Set up your profile · manage payments · create listings
+              Set up your business · browse all listings · manage payments
             </Text>
           </View>
           <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 18 }}>→</Text>

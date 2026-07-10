@@ -121,12 +121,14 @@ def create_enquiry(enquiry: schemas.EnquiryCreate, db: Session = Depends(get_db)
 
 
 @app.post("/api/enquiries/{enquiry_id}/decide")
-def decide_enquiry(enquiry_id: int, approve: bool, db: Session = Depends(get_db)):
+def decide_enquiry(enquiry_id: int, approve: bool, booking_date: Optional[str] = None, db: Session = Depends(get_db)):
     """Owner decision on an adoption/booking/sitting enquiry."""
     enquiry = db.query(models.Enquiry).filter(models.Enquiry.id == enquiry_id).first()
     if not enquiry:
         raise HTTPException(status_code=404, detail="Enquiry not found")
     enquiry.status = "approved" if approve else "rejected"
+    if approve and booking_date:
+        enquiry.booking_date = booking_date
     _log(db, "enquiry_decided", f"Enquiry {enquiry_id} {enquiry.status} by owner.")
     db.commit()
     return {"status": enquiry.status, "enquiry_id": enquiry_id}
