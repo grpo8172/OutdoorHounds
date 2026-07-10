@@ -4,6 +4,13 @@ An AI-guided service platform for Jenna Petersen's pet sitting, dog hiking, and 
 
 Built with **FastAPI** (backend), **React/Vite** (web frontend), **Expo/React Native** (mobile), and **MySQL** (shared database).
 
+# Clear cache for disk usage
+rm -rf ~/.cache/*
+rm -rf ~/.npm/_cacache
+
+# Build up everything 
+docker compose --env-file .env --profile mobile up -d --build db mobile-api mobile-web
+
 # From the project root
 cd /home/pigreetingz/outdoor_hounds
 

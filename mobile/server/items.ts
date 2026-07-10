@@ -4,6 +4,7 @@ import { z } from "zod";
 import { catalogueItems } from "../drizzle/schema";
 import { getDb, getProfileByUserId, hasActiveSubscription } from "./db";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { ENV } from "./_core/env";
 
 const ITEM_TYPES = [
   "pet",
@@ -152,7 +153,7 @@ export const itemsRouter = router({
         });
       }
 
-      const unlocked = await hasActiveSubscription(ctx.user.id);
+      const unlocked = !ENV.isProduction || await hasActiveSubscription(ctx.user.id);
       if (!unlocked) {
         throw new TRPCError({
           code: "FORBIDDEN",
