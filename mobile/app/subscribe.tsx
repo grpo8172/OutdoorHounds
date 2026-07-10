@@ -64,7 +64,7 @@ function GateScreen({
             }}
           >
             <Text style={{ color: '#7a6a58', fontWeight: '500', fontSize: 14 }}>
-              Continue as test user (dev only)
+              Try it out
             </Text>
           </Pressable>
         )}

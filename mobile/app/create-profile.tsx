@@ -147,7 +147,7 @@ export default function CreateProfileScreen() {
                 onPress={handleDevLogin}
                 style={{ borderRadius: 12, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: "#d1d5db" }}
               >
-                <Text style={{ color: "#6b7280", fontWeight: "500", fontSize: 14 }}>Continue as test user (dev)</Text>
+                <Text style={{ color: "#6b7280", fontWeight: "500", fontSize: 14 }}>Try it out</Text>
               </Pressable>
             )}
           </View>

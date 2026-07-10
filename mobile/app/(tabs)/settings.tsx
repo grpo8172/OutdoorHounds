@@ -106,22 +106,6 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* Create a Listing */}
-        <View className="px-6 pb-4">
-          <Pressable
-            onPress={() => router.push("/create-listing")}
-            className="bg-surface rounded-lg p-4 border border-border flex-row items-center justify-between active:opacity-70"
-          >
-            <View className="flex-1 gap-1">
-              <Text className="text-base font-bold text-foreground">Add a Listing</Text>
-              <Text className="text-sm text-muted">
-                Post a pet, service, event, or stall to the feed
-              </Text>
-            </View>
-            <Text className="text-lg ml-3">＋</Text>
-          </Pressable>
-        </View>
-
         {/* Preferences Section */}
         <View className="px-6 py-4 gap-4">
           {/* Notifications */}
@@ -289,7 +273,7 @@ export default function SettingsScreen() {
                   }}
                 >
                   <Text style={{ color: '#7a6a58', fontWeight: '500', fontSize: 14 }}>
-                    Continue as test user (dev only)
+                    Temp user
                   </Text>
                 </Pressable>
               )}

@@ -133,7 +133,7 @@ function GateScreen({
             }}
           >
             <Text style={{ color: '#7a6a58', fontWeight: '500', fontSize: 14 }}>
-              Continue as test user (dev only)
+              Try it out
             </Text>
           </Pressable>
         )}
@@ -149,7 +149,7 @@ function GateScreen({
 
 export default function CreateListingScreen() {
   const router = useRouter();
-  const { isAuthenticated, loading: authLoading, devLogin } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, devLogin } = useAuth();
   const [devLoginError, setDevLoginError] = useState<string | null>(null);
 
   const handleDevLogin = async () => {
@@ -169,8 +169,7 @@ export default function CreateListingScreen() {
   const subscriptionQuery = trpc.subscriptions.getStatus.useQuery(undefined, {
     enabled: isAuthenticated && hasProfile,
   });
-  // In dev mode, bypass the subscription requirement so testers can exercise the full form
-  const isUnlocked = isDevLoginEnabled || (subscriptionQuery.data?.active ?? false);
+  const isUnlocked = user?.loginMethod === "dev" || (subscriptionQuery.data?.active ?? false);
 
   if (authLoading) {
     return (
@@ -212,7 +211,7 @@ export default function CreateListingScreen() {
     );
   }
 
-  if (!isDevLoginEnabled && subscriptionQuery.isLoading) {
+  if (user?.loginMethod !== "dev" && subscriptionQuery.isLoading) {
     return (
       <ScreenContainer className="items-center justify-center">
         <ActivityIndicator />
@@ -227,6 +226,8 @@ export default function CreateListingScreen() {
         description={`A one-time ${UNLOCK_PRICE_LABEL} payment unlocks unlimited listings — no subscription, no renewals.`}
         ctaLabel={`Unlock for ${UNLOCK_PRICE_LABEL}`}
         onPress={() => router.push("/subscribe")}
+        devOnPress={handleDevLogin}
+        devError={devLoginError}
       />
     );
   }
