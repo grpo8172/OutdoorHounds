@@ -5,6 +5,7 @@ import Storefront from './features/storefront/Storefront'
 import OwnerSetup from './features/owner-setup/OwnerSetup'
 import AdminDashboard from './features/admin-dashboard/AdminDashboard'
 import CustomerChat from './features/customer-chat/CustomerChat'
+import ItemDetail from './features/storefront/ItemDetail'
 import './index.css'
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
           <Route path="/chat" element={<CustomerChat />} />
           <Route path="/setup" element={<OwnerSetup />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/items/:id" element={<ItemDetail />} />
         </Routes>
       </main>
     </BrowserRouter>

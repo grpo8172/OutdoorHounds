@@ -5,6 +5,12 @@ export async function getItems() {
   return res.json();
 }
 
+export async function getItem(id) {
+  const res = await fetch(`${BASE}/items/${id}`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export async function createEnquiry(itemId, message) {
   const res = await fetch(`${BASE}/enquiries`, {
     method: 'POST',

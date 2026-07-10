@@ -1,6 +1,8 @@
-import { Image, Text, View, Pressable } from "react-native";
+import { Image, Text, View, Pressable, Linking } from "react-native";
 import { Profile } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
+
+const WEB_BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:8000";
 
 interface ProfileCardProps {
   profile: Profile;
@@ -103,6 +105,16 @@ export function ProfileCard({
             <Text className="text-success font-semibold">Save for later</Text>
           </Pressable>
         </View>
+
+        {/* View on website — only for real DB listings (id starts with "db_") */}
+        {profile.id.startsWith("db_") && (
+          <Pressable
+            onPress={() => Linking.openURL(`${WEB_BASE_URL}/items/${profile.id.replace("db_", "")}`)}
+            className="mt-2 rounded-lg py-2 items-center active:opacity-70 border border-border"
+          >
+            <Text className="text-xs text-muted">🌐 View on website</Text>
+          </Pressable>
+        )}
       </View>
     </Pressable>
   );

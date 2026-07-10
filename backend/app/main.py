@@ -52,6 +52,18 @@ def get_pending_items(db: Session = Depends(get_db)):
     return db.query(models.CatalogueItem).filter(models.CatalogueItem.status == "pending_review").all()
 
 
+@app.get("/api/items/{item_id}", response_model=schemas.CatalogueItemResponse)
+def get_item(item_id: int, db: Session = Depends(get_db)):
+    """Single approved listing by ID — used by the mobile app's 'View on website' link."""
+    item = db.query(models.CatalogueItem).filter(
+        models.CatalogueItem.id == item_id,
+        models.CatalogueItem.status == "approved",
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    return item
+
+
 @app.post("/api/items", response_model=schemas.CatalogueItemResponse)
 def create_item(item: schemas.CatalogueItemCreate, db: Session = Depends(get_db)):
     """Proposing a listing never publishes it; it enters pending_review for owner approval."""

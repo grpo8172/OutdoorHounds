@@ -1,0 +1,101 @@
+import { useEffect, useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
+import { getItem, createEnquiry } from '../../api/client'
+
+const TYPE_LABEL = {
+  pet:                 'Adopt',
+  hike:                'Group Hike',
+  service:             'Walk / Sit',
+  petting_zoo_booking: 'Mini Petting Zoo',
+  event:               'Event',
+  stall:               'Stall / Shop',
+  lost_found:          'Lost & Found',
+}
+
+export default function ItemDetail() {
+  const { id } = useParams()
+  const [item, setItem] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [sent, setSent] = useState(false)
+
+  useEffect(() => {
+    getItem(id).then(data => {
+      setItem(data)
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [id])
+
+  const handleEnquire = async () => {
+    const message = window.prompt(`Send an enquiry about "${item.name}". Tell us a bit about you:`)
+    if (!message) return
+    await createEnquiry(item.id, message)
+    setSent(true)
+  }
+
+  if (loading) {
+    return <div style={{ padding: '2rem', color: '#555' }}>Loading…</div>
+  }
+
+  if (!item) {
+    return (
+      <div style={{ padding: '2rem' }}>
+        <p style={{ color: '#c00' }}>Listing not found.</p>
+        <Link to="/" className="btn btn--outline" style={{ marginTop: '1rem', display: 'inline-block' }}>← Back to listings</Link>
+      </div>
+    )
+  }
+
+  const m = item.listing_meta || {}
+
+  return (
+    <div style={{ maxWidth: 680, margin: '0 auto', padding: '1.5rem' }}>
+      <Link to="/" style={{ color: '#7a6a58', fontSize: '0.9rem', textDecoration: 'none' }}>← Back to listings</Link>
+
+      {item.image_url && (
+        <img
+          src={item.image_url}
+          alt={item.name}
+          onError={e => { e.target.style.display = 'none' }}
+          style={{ width: '100%', maxHeight: 360, objectFit: 'cover', borderRadius: 12, marginTop: '1rem' }}
+        />
+      )}
+
+      <div style={{ marginTop: '1rem' }}>
+        <span className={`tag ${item.item_type}`} style={{ fontSize: '0.8rem' }}>
+          {TYPE_LABEL[item.item_type] || item.item_type}
+        </span>
+        <h2 style={{ margin: '0.5rem 0', fontSize: '1.75rem' }}>{item.name}</h2>
+
+        {m.location && <p style={{ color: '#888', margin: '0.25rem 0' }}>📍 {m.location}</p>}
+        {item.price && <p style={{ fontWeight: 600, color: '#e8843c', margin: '0.25rem 0' }}>{item.price}</p>}
+
+        <p style={{ lineHeight: 1.7, marginTop: '1rem', color: '#333' }}>{item.description}</p>
+
+        {(m.breed || m.age) && (
+          <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem' }}>
+            {m.breed && <span><strong>Breed:</strong> {m.breed}</span>}
+            {m.age   && <span><strong>Age:</strong> {m.age} yrs</span>}
+          </div>
+        )}
+
+        {m.contact && (
+          <p style={{ marginTop: '0.75rem' }}><strong>Contact:</strong> {m.contact}</p>
+        )}
+
+        {sent ? (
+          <p style={{ marginTop: '1.5rem', color: '#2d6a4f', fontWeight: 600 }}>
+            ✓ Enquiry sent — we'll be in touch soon.
+          </p>
+        ) : (
+          <button
+            className="btn"
+            onClick={handleEnquire}
+            style={{ marginTop: '1.5rem', backgroundColor: '#e8843c', color: '#fff', border: 'none' }}
+          >
+            Enquire about this listing
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
