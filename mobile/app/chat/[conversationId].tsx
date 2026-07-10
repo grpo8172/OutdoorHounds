@@ -5,6 +5,53 @@ import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 
+const SEEKING_LABELS: Record<string, string> = {
+  adopt_or_foster: "🐾 Adopt / Foster",
+  pet_services: "🦮 Pet Services",
+  pet_events: "🎉 Events",
+  stalls_and_shops: "🛍️ Shops",
+  lost_and_found: "🔍 Lost & Found",
+  mini_petting_zoo_bookings: "🐑 Petting Zoo",
+};
+
+function BuyerProfileCard({ profile }: { profile: { displayName: string | null; bio: string | null; location: string | null; preferredModesJson: unknown } }) {
+  const modes = Array.isArray(profile.preferredModesJson) ? profile.preferredModesJson as string[] : [];
+  return (
+    <View style={{ margin: 12, backgroundColor: "#fff7f0", borderRadius: 14, padding: 16, borderWidth: 1.5, borderColor: "#e8843c" }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 }}>
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "#e8843c", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>
+            {profile.displayName?.[0]?.toUpperCase() ?? "?"}
+          </Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: "#111" }}>{profile.displayName ?? "Anonymous"}</Text>
+          {profile.location ? (
+            <Text style={{ fontSize: 12, color: "#9ca3af" }}>📍 {profile.location}</Text>
+          ) : null}
+        </View>
+        <View style={{ backgroundColor: "#e8843c", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+          <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>THEIR PROFILE</Text>
+        </View>
+      </View>
+
+      {profile.bio ? (
+        <Text style={{ fontSize: 13, color: "#374151", lineHeight: 19, marginBottom: 8 }}>{profile.bio}</Text>
+      ) : null}
+
+      {modes.length > 0 && (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5 }}>
+          {modes.map(m => (
+            <View key={m} style={{ backgroundColor: "#fff", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "#fcd9a8" }}>
+              <Text style={{ fontSize: 11, color: "#e8843c", fontWeight: "600" }}>{SEEKING_LABELS[m] ?? m}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function ChatScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
   const convId = parseInt(conversationId, 10);
@@ -15,6 +62,11 @@ export default function ChatScreen() {
   const messagesQuery = trpc.messages.getMessages.useQuery(
     { conversationId: convId },
     { enabled: !isNaN(convId), refetchInterval: 5_000 },
+  );
+
+  const profileQuery = trpc.messages.getConversationProfile.useQuery(
+    { conversationId: convId },
+    { enabled: !isNaN(convId) },
   );
 
   const sendMutation = trpc.messages.sendMessage.useMutation({
@@ -37,6 +89,7 @@ export default function ChatScreen() {
   }
 
   const msgs = messagesQuery.data ?? [];
+  const buyerProfile = profileQuery.data;
 
   return (
     <ScreenContainer className="p-0">
@@ -55,44 +108,51 @@ export default function ChatScreen() {
         <ScrollView
           ref={scrollRef}
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, gap: 10 }}
+          contentContainerStyle={{ paddingBottom: 16, gap: 10 }}
           showsVerticalScrollIndicator={false}
         >
-          {msgs.length === 0 && (
-            <View style={{ alignItems: "center", paddingTop: 40, gap: 8 }}>
-              <Text style={{ fontSize: 28 }}>👋</Text>
-              <Text style={{ color: "#9ca3af", textAlign: "center", fontSize: 14 }}>
-                Say hello! You can negotiate pricing,{"\n"}share contact details, and arrange payment here.
-              </Text>
-              <Text style={{ color: "#d1d5db", fontSize: 12, textAlign: "center", marginTop: 4 }}>
-                Payments between you and the lister are arranged privately — this is a private conversation.
-              </Text>
-            </View>
+          {/* Buyer profile card — shown to the lister so they know who they're talking to */}
+          {buyerProfile && buyerProfile.displayName && (
+            <BuyerProfileCard profile={buyerProfile as any} />
           )}
 
-          {msgs.map((msg) => {
-            const isMe = msg.senderId === user?.id;
-            return (
-              <View
-                key={msg.id}
-                style={{
-                  alignSelf: isMe ? "flex-end" : "flex-start",
-                  maxWidth: "78%",
-                  backgroundColor: isMe ? "#e8843c" : "#f3f4f6",
-                  borderRadius: 16,
-                  borderBottomRightRadius: isMe ? 4 : 16,
-                  borderBottomLeftRadius: isMe ? 16 : 4,
-                  padding: 12,
-                  gap: 4,
-                }}
-              >
-                <Text style={{ color: isMe ? "#fff" : "#1a1a1a", fontSize: 14, lineHeight: 20 }}>{msg.body}</Text>
-                <Text style={{ color: isMe ? "rgba(255,255,255,0.65)" : "#9ca3af", fontSize: 10, alignSelf: isMe ? "flex-end" : "flex-start" }}>
-                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          <View style={{ padding: 16, gap: 10 }}>
+            {msgs.length === 0 && (
+              <View style={{ alignItems: "center", paddingTop: 32, gap: 8 }}>
+                <Text style={{ fontSize: 28 }}>👋</Text>
+                <Text style={{ color: "#9ca3af", textAlign: "center", fontSize: 14 }}>
+                  Say hello! Negotiate pricing,{"\n"}share contact details, and arrange payment here.
+                </Text>
+                <Text style={{ color: "#d1d5db", fontSize: 12, textAlign: "center", marginTop: 4 }}>
+                  This is a private conversation.
                 </Text>
               </View>
-            );
-          })}
+            )}
+
+            {msgs.map((msg) => {
+              const isMe = msg.senderId === user?.id;
+              return (
+                <View
+                  key={msg.id}
+                  style={{
+                    alignSelf: isMe ? "flex-end" : "flex-start",
+                    maxWidth: "78%",
+                    backgroundColor: isMe ? "#e8843c" : "#f3f4f6",
+                    borderRadius: 16,
+                    borderBottomRightRadius: isMe ? 4 : 16,
+                    borderBottomLeftRadius: isMe ? 16 : 4,
+                    padding: 12,
+                    gap: 4,
+                  }}
+                >
+                  <Text style={{ color: isMe ? "#fff" : "#1a1a1a", fontSize: 14, lineHeight: 20 }}>{msg.body}</Text>
+                  <Text style={{ color: isMe ? "rgba(255,255,255,0.65)" : "#9ca3af", fontSize: 10, alignSelf: isMe ? "flex-end" : "flex-start" }}>
+                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
         </ScrollView>
 
         {/* Input bar */}

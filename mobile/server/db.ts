@@ -217,6 +217,28 @@ export async function getSavedItemIds(userId: number): Promise<number[]> {
   return rows.map(r => r.id);
 }
 
+export async function getSavedItems(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.execute(sql`
+    SELECT ci.id, ci.item_type, ci.name, ci.description, ci.price, ci.image_url, ci.listing_meta
+    FROM swipes s
+    JOIN catalogue_items ci ON ci.id = s.catalogue_item_id
+    WHERE s.user_id = ${userId}
+    ORDER BY s.created_at DESC
+  `) as any;
+  const data: any[] = Array.isArray(rows[0]) ? rows[0] : rows;
+  return data.map((r: any) => ({
+    id: r.id as number,
+    itemType: r.item_type as string,
+    name: r.name as string,
+    description: r.description as string,
+    price: (r.price ?? null) as string | null,
+    imageUrl: (r.image_url ?? null) as string | null,
+    listingMeta: r.listing_meta ? (typeof r.listing_meta === 'string' ? JSON.parse(r.listing_meta) : r.listing_meta) : null,
+  }));
+}
+
 // ── Conversations & messages ─────────────────────────────────────────────────
 
 export async function getOrCreateConversation(buyerUserId: number, itemId: number): Promise<Conversation> {
@@ -245,20 +267,20 @@ export async function createMessage(conversationId: number, senderId: number, bo
   return rows[0];
 }
 
-export async function getMyConversations(userId: number): Promise<Array<Conversation & { lastMessage: string | null; itemName: string | null }>> {
+export async function getMyConversations(userId: number): Promise<Array<Conversation & { lastMessage: string | null; itemName: string | null; buyerProfile: Profile | null }>> {
   const db = await getDb();
   if (!db) return [];
   const rows = await db.select().from(conversations).where(eq(conversations.buyerUserId, userId)).orderBy(desc(conversations.createdAt));
   if (rows.length === 0) return [];
 
-  // Attach last message and item name for each conversation
   const enriched = await Promise.all(rows.map(async (conv) => {
     const lastMsgs = await db!.select({ body: messages.body }).from(messages)
       .where(eq(messages.conversationId, conv.id)).orderBy(desc(messages.createdAt)).limit(1);
-    // Fetch item name via raw select on catalogue_items
     const itemRows = await db!.execute(sql`SELECT name FROM catalogue_items WHERE id = ${conv.itemId} LIMIT 1`) as any;
     const itemName = itemRows?.[0]?.[0]?.name ?? null;
-    return { ...conv, lastMessage: lastMsgs[0]?.body ?? null, itemName };
+    const buyerProfiles = await db!.select().from(profiles).where(eq(profiles.userId, conv.buyerUserId)).limit(1);
+    const buyerProfile = buyerProfiles[0] ?? null;
+    return { ...conv, lastMessage: lastMsgs[0]?.body ?? null, itemName, buyerProfile };
   }));
   return enriched;
 }

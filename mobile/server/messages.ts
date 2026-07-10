@@ -7,6 +7,8 @@ import {
   getMyConversations,
   persistSwipe,
   getSavedItemIds,
+  getSavedItems,
+  getProfileByUserId,
 } from "./db";
 
 export const messagesRouter = router({
@@ -19,6 +21,10 @@ export const messagesRouter = router({
 
   getSavedItemIds: protectedProcedure.query(async ({ ctx }) => {
     return getSavedItemIds(ctx.user.id);
+  }),
+
+  getSavedItems: protectedProcedure.query(async ({ ctx }) => {
+    return getSavedItems(ctx.user.id);
   }),
 
   startConversation: protectedProcedure
@@ -42,4 +48,13 @@ export const messagesRouter = router({
   getMyConversations: protectedProcedure.query(async ({ ctx }) => {
     return getMyConversations(ctx.user.id);
   }),
+
+  getConversationProfile: protectedProcedure
+    .input(z.object({ conversationId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const convs = await getMyConversations(ctx.user.id);
+      const conv = convs.find(c => c.id === input.conversationId);
+      if (!conv) return null;
+      return conv.buyerProfile ?? null;
+    }),
 });

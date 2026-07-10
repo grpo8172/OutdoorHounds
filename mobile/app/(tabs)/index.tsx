@@ -79,7 +79,7 @@ export default function HomeScreen() {
         {/* Sign-in nudge for guests */}
         {!loading && !user && (
           <Pressable
-            onPress={() => router.navigate("/(tabs)/settings")}
+            onPress={() => router.push("/create-profile")}
             style={{
               width: "100%", borderRadius: 16, borderWidth: 1.5,
               borderColor: "#e8843c", paddingVertical: 14, paddingHorizontal: 20,

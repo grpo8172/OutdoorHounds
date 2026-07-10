@@ -1,11 +1,10 @@
-import { ScrollView, Text, View, Pressable, Image } from "react-native";
+import { ScrollView, Text, View, Pressable, Image, ActivityIndicator } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 import { router } from "expo-router";
 import { useState } from "react";
 import { startOAuthLogin } from "@/constants/oauth";
-import { useSwipeProfiles } from "@/hooks/use-swipe-profiles";
 
 type Tab = "saved" | "chats";
 
@@ -17,13 +16,13 @@ function SignInPrompt() {
         Sign in to save listings & chat
       </Text>
       <Text style={{ fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 }}>
-        Create a free profile to keep track of listings you're interested in and message the person directly to negotiate details and arrange payment.
+        Create a free profile to keep track of listings you're interested in and message listers directly.
       </Text>
       <Pressable
-        onPress={() => startOAuthLogin()}
+        onPress={() => router.push("/create-profile")}
         style={{ backgroundColor: "#e8843c", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 }}
       >
-        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Sign in with Google</Text>
+        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Create a profile</Text>
       </Pressable>
     </View>
   );
@@ -32,7 +31,10 @@ function SignInPrompt() {
 export default function InteractionsScreen() {
   const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("saved");
-  const { savedListings } = useSwipeProfiles();
+
+  const savedItemsQuery = trpc.messages.getSavedItems.useQuery(undefined, {
+    enabled: !!user,
+  });
 
   const conversationsQuery = trpc.messages.getMyConversations.useQuery(undefined, {
     enabled: !!user,
@@ -43,65 +45,84 @@ export default function InteractionsScreen() {
     onSuccess: (conv) => router.push(`/chat/${conv.id}`),
   });
 
-  function handleMessage(profile: { id: string; name: string }) {
-    if (!user) return startOAuthLogin();
-    if (!profile.id.startsWith("db_")) return;
-    const itemId = parseInt(profile.id.replace("db_", ""), 10);
+  function handleMessage(itemId: number) {
+    if (!user) return router.push("/create-profile");
     startChatMutation.mutate({ itemId });
   }
 
   return (
     <ScreenContainer className="p-0">
-      {/* Tabs */}
+      {/* Tab bar */}
       <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e5e7eb", backgroundColor: "#fff" }}>
-        {(["saved", "chats"] as Tab[]).map((tab) => (
-          <Pressable
-            key={tab}
-            onPress={() => setActiveTab(tab)}
-            style={{
-              flex: 1, paddingVertical: 14, alignItems: "center",
-              borderBottomWidth: 2,
-              borderBottomColor: activeTab === tab ? "#e8843c" : "transparent",
-            }}
-          >
-            <Text style={{ fontWeight: "600", color: activeTab === tab ? "#e8843c" : "#9ca3af" }}>
-              {tab === "saved" ? `Saved (${savedListings.length})` : `Chats (${conversationsQuery.data?.length ?? 0})`}
-            </Text>
-          </Pressable>
-        ))}
+        {(["saved", "chats"] as Tab[]).map((tab) => {
+          const count = tab === "saved"
+            ? (savedItemsQuery.data?.length ?? 0)
+            : (conversationsQuery.data?.length ?? 0);
+          return (
+            <Pressable
+              key={tab}
+              onPress={() => setActiveTab(tab)}
+              style={{
+                flex: 1, paddingVertical: 14, alignItems: "center",
+                borderBottomWidth: 2,
+                borderBottomColor: activeTab === tab ? "#e8843c" : "transparent",
+              }}
+            >
+              <Text style={{ fontWeight: "600", color: activeTab === tab ? "#e8843c" : "#9ca3af" }}>
+                {tab === "saved" ? `Saved (${count})` : `Chats (${count})`}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {authLoading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ color: "#9ca3af" }}>Loading…</Text>
+          <ActivityIndicator color="#e8843c" />
         </View>
       ) : !user ? (
         <SignInPrompt />
       ) : (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
           {activeTab === "saved" ? (
-            savedListings.length === 0 ? (
+            savedItemsQuery.isLoading ? (
+              <View style={{ alignItems: "center", paddingTop: 48 }}>
+                <ActivityIndicator color="#e8843c" />
+              </View>
+            ) : !savedItemsQuery.data?.length ? (
               <View style={{ alignItems: "center", paddingTop: 48, gap: 8 }}>
                 <Text style={{ fontSize: 32 }}>👆</Text>
-                <Text style={{ fontSize: 16, color: "#9ca3af" }}>Swipe right on listings to save them here</Text>
+                <Text style={{ fontSize: 16, color: "#9ca3af", textAlign: "center" }}>
+                  Swipe right on listings to save them here
+                </Text>
               </View>
             ) : (
-              savedListings.map((profile) => (
+              savedItemsQuery.data.map((item) => (
                 <View
-                  key={profile.id}
+                  key={item.id}
                   style={{ flexDirection: "row", backgroundColor: "#fff", borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: "#e5e7eb" }}
                 >
-                  {profile.images[0] && (
-                    <Image source={{ uri: profile.images[0] }} style={{ width: 88, height: 88 }} resizeMode="cover" />
+                  {item.imageUrl ? (
+                    <Image source={{ uri: item.imageUrl }} style={{ width: 88, height: 88 }} resizeMode="cover" />
+                  ) : (
+                    <View style={{ width: 88, height: 88, backgroundColor: "#f3f4f6", alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ fontSize: 28 }}>🐾</Text>
+                    </View>
                   )}
                   <View style={{ flex: 1, padding: 12, justifyContent: "space-between" }}>
                     <View>
-                      <Text style={{ fontWeight: "700", fontSize: 15, color: "#1a1a1a" }}>{profile.name}</Text>
-                      <Text style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>{profile.location}</Text>
-                      {profile.price && <Text style={{ fontSize: 12, color: "#e8843c", fontWeight: "600", marginTop: 2 }}>{profile.price}</Text>}
+                      <Text style={{ fontWeight: "700", fontSize: 15, color: "#1a1a1a" }}>{item.name}</Text>
+                      {(item.listingMeta as any)?.location && (
+                        <Text style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
+                          📍 {(item.listingMeta as any).location}
+                        </Text>
+                      )}
+                      {item.price && (
+                        <Text style={{ fontSize: 12, color: "#e8843c", fontWeight: "600", marginTop: 2 }}>{item.price}</Text>
+                      )}
                     </View>
                     <Pressable
-                      onPress={() => handleMessage(profile)}
+                      onPress={() => handleMessage(item.id)}
                       disabled={startChatMutation.isPending}
                       style={{ alignSelf: "flex-start", backgroundColor: "#e8843c", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6, marginTop: 6 }}
                     >
