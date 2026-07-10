@@ -58,6 +58,7 @@ class OwnerConfig(Base):
     __tablename__ = "owner_config"
     id = Column(Integer, primary_key=True)
     business_name = Column(String(255), default="Outdoor Hounds")
+    site_emoji = Column(String(16), default="🐾")
     tagline = Column(String(512), default="Adopt a friend, join a hike, book a service.")
     # Full mode config — each entry: {key, active, emoji, label}
     mode_config = Column(JSON, default=lambda: [

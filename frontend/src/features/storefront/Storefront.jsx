@@ -130,7 +130,11 @@ export default function Storefront() {
 
   const heroPhoto = config?.hero_photos?.[0]
   const businessName = config?.business_name || 'Outdoor Hounds'
+  const siteEmoji = config?.site_emoji || '🐾'
   const tagline = config?.tagline || 'Adopt a friend, join a hike, book a service.'
+
+  // Update browser tab title when config loads
+  if (config) document.title = `${siteEmoji} ${businessName}`
 
   return (
     <div>
@@ -144,7 +148,7 @@ export default function Storefront() {
           color: '#fff',
         } : {}}
       >
-        <h1 style={heroPhoto ? { color: '#fff' } : {}}>{businessName}</h1>
+        <h1 style={heroPhoto ? { color: '#fff' } : {}}>{siteEmoji} {businessName}</h1>
         <p style={heroPhoto ? { color: 'rgba(255,255,255,0.9)' } : {}}>{tagline}</p>
       </div>
 

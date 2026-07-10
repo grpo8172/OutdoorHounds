@@ -13,6 +13,7 @@ class ModeConfig(BaseModel):
 class OwnerConfigResponse(BaseModel):
     id: int
     business_name: str
+    site_emoji: str = "🐾"
     tagline: str
     mode_config: List[ModeConfig]
     hero_photos: List[str]
@@ -22,6 +23,7 @@ class OwnerConfigResponse(BaseModel):
 
 class OwnerConfigUpdate(BaseModel):
     business_name: Optional[str] = None
+    site_emoji: Optional[str] = None
     tagline: Optional[str] = None
     mode_config: Optional[List[ModeConfig]] = None
     hero_photos: Optional[List[str]] = None

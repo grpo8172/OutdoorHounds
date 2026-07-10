@@ -19,7 +19,7 @@ function mergeConfig(data) {
     const found = existing.find(m => m.key === def.key)
     return found || def
   })
-  return { ...data, mode_config: merged }
+  return { ...data, site_emoji: data.site_emoji ?? '🐾', mode_config: merged }
 }
 
 function readCache() {
@@ -81,6 +81,7 @@ export default function OwnerSetup() {
     try {
       await updateConfig({
         business_name: config.business_name,
+        site_emoji: config.site_emoji,
         tagline: config.tagline,
         mode_config: config.mode_config,
         hero_photos: config.hero_photos,
@@ -104,9 +105,20 @@ export default function OwnerSetup() {
       {/* Business name */}
       <section style={sectionStyle}>
         <h3 style={headingStyle}>Site name</h3>
-        <input style={inputStyle} value={config.business_name}
-          onChange={e => setConfig({ ...config, business_name: e.target.value })}
-          placeholder="e.g. Peak Trails Collective" />
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <input
+            value={config.site_emoji}
+            onChange={e => setConfig({ ...config, site_emoji: e.target.value })}
+            style={{ width: 56, textAlign: 'center', fontSize: '1.6rem', border: '1px solid #e5e7eb', borderRadius: 10, padding: '6px', background: 'white', flexShrink: 0 }}
+            maxLength={4}
+          />
+          <input style={{ ...inputStyle, flex: 1 }} value={config.business_name}
+            onChange={e => setConfig({ ...config, business_name: e.target.value })}
+            placeholder="e.g. Peak Trails Collective" />
+        </div>
+        <p style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '0.4rem' }}>
+          Emoji shows in the browser tab and next to your site title.
+        </p>
       </section>
 
       {/* Tagline */}

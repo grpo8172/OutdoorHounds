@@ -1,5 +1,6 @@
 import { Image, ScrollView, Text, View, Pressable, Linking } from "react-native";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { MODES } from "@/lib/modes";
 import { useAuth } from "@/hooks/use-auth";
@@ -10,6 +11,18 @@ const WEB_BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:8000";
 export default function HomeScreen() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [siteName, setSiteName] = useState("Outdoor Hounds");
+  const [siteEmoji, setSiteEmoji] = useState("🐾");
+
+  useEffect(() => {
+    fetch(`${WEB_BASE_URL}/api/config`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.business_name) setSiteName(d.business_name);
+        if (d.site_emoji) setSiteEmoji(d.site_emoji);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <ScreenContainer>
@@ -18,7 +31,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={{ gap: 2, paddingTop: 4, marginBottom: 4 }}>
-          <Text className="text-3xl font-bold text-foreground">Outdoor Hounds</Text>
+          <Text className="text-3xl font-bold text-foreground">{siteEmoji} {siteName}</Text>
           <Text className="text-sm text-muted">What are you looking for today?</Text>
         </View>
 

@@ -330,16 +330,16 @@ function ListingForm() {
                   <Pressable
                     key={mode.id}
                     onPress={() => setForm((f) => ({ ...f, mode: mode.id }))}
-                    className="rounded-full px-4 py-2 border active:opacity-70"
                     style={{
+                      borderRadius: 999,
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderWidth: 1.5,
                       backgroundColor: selected ? "#e8843c" : "#ffffff",
                       borderColor: selected ? "#e8843c" : "#ddd5c4",
                     }}
                   >
-                    <Text
-                      className="text-sm font-medium"
-                      style={{ color: selected ? "#a8d4b8" : "#2c2c2c" }}
-                    >
+                    <Text style={{ fontSize: 13, fontWeight: "500", color: selected ? "#ffffff" : "#2c2c2c" }}>
                       {mode.emoji} {mode.title}
                     </Text>
                   </Pressable>

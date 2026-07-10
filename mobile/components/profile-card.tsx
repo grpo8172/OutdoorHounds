@@ -1,8 +1,7 @@
 import { useRef } from "react";
-import { Image, Text, View, Pressable, Linking, Animated, PanResponder } from "react-native";
+import { Image, Text, View, Pressable, Animated, PanResponder } from "react-native";
 import { Profile } from "@/lib/mockData";
 
-const WEB_BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:8000";
 const SWIPE_THRESHOLD = 100;
 
 interface ProfileCardProps {
@@ -184,15 +183,6 @@ export function ProfileCard({
           <Text style={{ fontSize: 13, fontWeight: "600", color: "#e8843c", marginTop: 2 }}>{profile.price}</Text>
         )}
 
-        <Pressable
-          onPress={() => {
-            const itemId = profile.id.startsWith("db_") ? profile.id.replace("db_", "") : profile.id;
-            Linking.openURL(`${WEB_BASE_URL}/items/${itemId}`);
-          }}
-          style={{ marginTop: 4, borderRadius: 10, paddingVertical: 6, alignItems: "center", borderWidth: 1, borderColor: "#e5e7eb" }}
-        >
-          <Text style={{ fontSize: 12, color: "#9ca3af" }}>🌐 View on website</Text>
-        </Pressable>
       </View>
     </Animated.View>
   );
