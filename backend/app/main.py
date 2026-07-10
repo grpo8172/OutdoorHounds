@@ -112,7 +112,7 @@ def create_enquiry(enquiry: schemas.EnquiryCreate, db: Session = Depends(get_db)
     item = db.query(models.CatalogueItem).filter(models.CatalogueItem.id == enquiry.item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Listing not found")
-    db_enquiry = models.Enquiry(item_id=enquiry.item_id, message=enquiry.message, status="pending", user_id=1)
+    db_enquiry = models.Enquiry(item_id=enquiry.item_id, message=enquiry.message, status="pending")
     db.add(db_enquiry)
     _log(db, "enquiry_created", f"Enquiry created for item {enquiry.item_id} (pending owner review).")
     db.commit()
@@ -137,7 +137,15 @@ def decide_enquiry(enquiry_id: int, approve: bool, booking_date: Optional[str] =
 @app.get("/api/audit", response_model=List[schemas.AuditEventResponse])
 def get_audit(db: Session = Depends(get_db)):
     """Audit trail: which signals/actions drove each decision."""
-    return db.query(models.AuditEvent).order_by(models.AuditEvent.created_at.desc()).limit(100).all()
+    return db.query(models.AuditEvent).order_by(models.AuditEvent.created_at.desc()).limit(200).all()
+
+
+@app.post("/api/track")
+def track_event(event: schemas.TrackEventRequest, db: Session = Depends(get_db)):
+    """Client-side click/interaction tracking — logged into the same audit trail."""
+    _log(db, event.event_type, event.details or "")
+    db.commit()
+    return {"ok": True}
 
 
 @app.get("/api/me/profile", response_model=schemas.ProfileResponse)

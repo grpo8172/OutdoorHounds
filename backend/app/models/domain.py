@@ -32,15 +32,12 @@ class CatalogueItem(Base):
 class Enquiry(Base):
     __tablename__ = "web_enquiries"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("web_users.id"))
-    item_id = Column(Integer, ForeignKey("catalogue_items.id"))
+    user_id = Column(Integer, nullable=True)
+    item_id = Column(Integer)
     message = Column(Text)
     status = Column(String(32), default="pending")
     booking_date = Column(String(10), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-
-    user = relationship("User")
-    item = relationship("CatalogueItem")
 
 class AssistantRule(Base):
     __tablename__ = "web_assistant_rules"

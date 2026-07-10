@@ -41,6 +41,21 @@ export async function uploadConfigPhotos(files) {
   return res.json();
 }
 
+export async function trackEvent(eventType, details = '') {
+  try {
+    await fetch(`${BASE}/track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_type: eventType, details }),
+    })
+  } catch { /* non-critical */ }
+}
+
+export async function getAuditEvents() {
+  const res = await fetch(`${BASE}/audit`)
+  return res.json()
+}
+
 export async function runSetupAssistant(prompt) {
   const res = await fetch(`${BASE}/assistant/setup?prompt=${encodeURIComponent(prompt)}`, {
     method: 'POST',

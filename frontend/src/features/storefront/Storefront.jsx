@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getItems, getConfig, createEnquiry } from '../../api/client'
+import { getItems, getConfig, trackEvent } from '../../api/client'
+import { EnquiryModal } from './EnquiryModal'
 
 const ALL_TYPE_LABELS = {
   pet:                 'Adopt / Foster',
@@ -21,21 +22,17 @@ const STANDARD_CTA = {
   event: 'Get Tickets', stall: 'Enquire', lost_found: 'I Think I Found Them',
 }
 
-async function sendEnquiry(itemId, prefix, onDone) {
-  const message = window.prompt(prefix)
-  if (!message) return
-  await createEnquiry(itemId, `[${prefix.split(' ')[0].replace('[', '').replace(']', '')}] ${message}`)
-  onDone()
+function sendEnquiry(item, prefix, openModal) {
+  trackEvent('enquiry_intent', `Item ${item.id}: ${item.name} — ${prefix}`)
+  openModal({ ...item, name: `${item.name} — ${prefix}` })
 }
 
-function PettingZooCard({ item, saved, onSave }) {
+function PettingZooCard({ item, saved, onSave, openModal }) {
   const m = item.listing_meta || {}
-  const [sent, setSent] = useState(null)
-  const notify = (label) => { setSent(label); setTimeout(() => setSent(null), 3000) }
   const actions = [
-    { label: 'Check availability', prompt: 'Which dates are you interested in? Any other details:', style: 'btn btn--primary' },
-    { label: 'Request booking', prompt: 'Tell us about your event — date, location, number of guests:', style: 'btn btn--primary' },
-    { label: 'Ask a question', prompt: 'What would you like to know?', style: 'btn btn--outline' },
+    { label: 'Check availability', prompt: 'Check availability', style: 'btn btn--primary' },
+    { label: 'Request booking', prompt: 'Request booking', style: 'btn btn--primary' },
+    { label: 'Ask a question', prompt: 'Question', style: 'btn btn--outline' },
   ]
   return (
     <div className="card card--zoo">
@@ -57,10 +54,9 @@ function PettingZooCard({ item, saved, onSave }) {
         {m.safety_notes    && <p className="zoo-note"><strong>Safety:</strong> {m.safety_notes}</p>}
         {m.insurance_notes && <p className="zoo-note"><strong>Insurance &amp; licences:</strong> {m.insurance_notes}</p>}
         {m.contact         && <p className="zoo-note"><strong>Contact:</strong> {m.contact}</p>}
-        {sent && <p className="zoo-sent">✓ {sent} — we'll be in touch soon.</p>}
         <div className="zoo-actions">
           {actions.map(({ label, prompt, style }) => (
-            <button key={label} className={style} onClick={() => sendEnquiry(item.id, prompt, () => notify(label))}>{label}</button>
+            <button key={label} className={style} onClick={() => sendEnquiry(item, prompt, openModal)}>{label}</button>
           ))}
           <button className={`btn btn--outline${saved ? ' btn--saved' : ''}`} onClick={onSave}>{saved ? 'Saved ✓' : 'Save for later'}</button>
         </div>
@@ -91,10 +87,12 @@ export default function Storefront() {
   const [config, setConfig] = useState(null)
   const [filter, setFilter] = useState('all')
   const [saved, setSaved] = useState(new Set())
+  const [enquiryItem, setEnquiryItem] = useState(null)
 
   useEffect(() => {
     getItems().then(setItems).catch(() => setItems([]))
     getConfig().then(setConfig).catch(() => setConfig(null))
+    trackEvent('storefront_viewed', '')
   }, [])
 
   const typeLabelMap = Object.fromEntries(
@@ -113,11 +111,9 @@ export default function Storefront() {
     ...activeModeConfig.map(({ key, emoji, label }) => ({ key, label, emoji })),
   ]
 
-  const handleEnquire = async (item) => {
-    const message = window.prompt(`Send an enquiry about "${item.name}". Tell us a bit about you:`)
-    if (!message) return
-    await createEnquiry(item.id, message)
-    window.alert("Enquiry sent! We'll review and get back to you. Nothing is confirmed until approved.")
+  const handleEnquire = (item) => {
+    trackEvent('enquiry_intent', `Item ${item.id}: ${item.name}`)
+    setEnquiryItem(item)
   }
 
   const toggleSave = (id) => {
@@ -138,6 +134,8 @@ export default function Storefront() {
 
   return (
     <div>
+      {enquiryItem && <EnquiryModal item={enquiryItem} onClose={() => setEnquiryItem(null)} />}
+
       {/* Hero */}
       <div
         className="hero"
@@ -172,7 +170,7 @@ export default function Storefront() {
       <div className="grid">
         {filtered.map(item =>
           item.item_type === 'petting_zoo_booking' ? (
-            <PettingZooCard key={item.id} item={item} saved={saved.has(item.id)} onSave={() => toggleSave(item.id)} />
+            <PettingZooCard key={item.id} item={item} saved={saved.has(item.id)} onSave={() => toggleSave(item.id)} openModal={setEnquiryItem} />
           ) : (
             <StandardCard key={item.id} item={item} onEnquire={handleEnquire} typeLabel={typeLabelMap[item.item_type]} />
           )

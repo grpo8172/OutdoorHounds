@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getItem, createEnquiry } from '../../api/client'
+import { getItem, trackEvent } from '../../api/client'
+import { EnquiryModal } from './EnquiryModal'
 
 const TYPE_LABEL = {
   pet:                 'Adopt',
@@ -16,20 +17,19 @@ export default function ItemDetail() {
   const { id } = useParams()
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [sent, setSent] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
 
   useEffect(() => {
     getItem(id).then(data => {
       setItem(data)
       setLoading(false)
+      if (data) trackEvent('item_viewed', `Item ${data.id}: ${data.name}`)
     }).catch(() => setLoading(false))
   }, [id])
 
-  const handleEnquire = async () => {
-    const message = window.prompt(`Send an enquiry about "${item.name}". Tell us a bit about you:`)
-    if (!message) return
-    await createEnquiry(item.id, message)
-    setSent(true)
+  const handleEnquire = () => {
+    trackEvent('enquiry_intent', `Item ${item.id}: ${item.name}`)
+    setModalOpen(true)
   }
 
   if (loading) {
@@ -49,6 +49,8 @@ export default function ItemDetail() {
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '1.5rem' }}>
+      {modalOpen && <EnquiryModal item={item} onClose={() => setModalOpen(false)} />}
+
       <Link to="/" style={{ color: '#7a6a58', fontSize: '0.9rem', textDecoration: 'none' }}>← Back to listings</Link>
 
       {item.image_url && (
@@ -82,19 +84,13 @@ export default function ItemDetail() {
           <p style={{ marginTop: '0.75rem' }}><strong>Contact:</strong> {m.contact}</p>
         )}
 
-        {sent ? (
-          <p style={{ marginTop: '1.5rem', color: '#2d6a4f', fontWeight: 600 }}>
-            ✓ Enquiry sent — we'll be in touch soon.
-          </p>
-        ) : (
-          <button
-            className="btn"
-            onClick={handleEnquire}
-            style={{ marginTop: '1.5rem', backgroundColor: '#e8843c', color: '#fff', border: 'none' }}
-          >
-            Enquire about this listing
-          </button>
-        )}
+        <button
+          className="btn"
+          onClick={handleEnquire}
+          style={{ marginTop: '1.5rem', backgroundColor: '#e8843c', color: '#fff', border: 'none' }}
+        >
+          Enquire about this listing
+        </button>
       </div>
     </div>
   )

@@ -61,7 +61,7 @@ class EnquiryCreate(EnquiryBase):
 
 class EnquiryResponse(EnquiryBase):
     id: int
-    user_id: int
+    user_id: Optional[int] = None
     status: str
     booking_date: Optional[str] = None
     created_at: datetime
@@ -77,6 +77,10 @@ class AuditEventResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class TrackEventRequest(BaseModel):
+    event_type: str
+    details: Optional[str] = ""
 
 VALID_PROFILE_TYPES = {
     "individual", "rescue_group", "foster_carer",

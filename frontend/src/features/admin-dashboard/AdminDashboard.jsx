@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { getAuditEvents } from '../../api/client'
 
 const TYPE_LABELS = {
   pet: 'Adopt / Foster', hike: 'Group Hike', service: 'Pet Services',
@@ -140,17 +141,31 @@ function ApproveModal({ enquiry, itemName, onConfirm, onCancel }) {
 
 // ── Main dashboard ────────────────────────────────────────────────────────────
 
+const EVENT_LABELS = {
+  storefront_viewed: { label: 'Page view', emoji: '👁️' },
+  enquiry_intent:    { label: 'Enquiry button clicked', emoji: '💬' },
+  enquiry_submitted: { label: 'Enquiry sent', emoji: '✉️' },
+  enquiry_created:   { label: 'Enquiry received', emoji: '📥' },
+  enquiry_decided:   { label: 'Enquiry decided', emoji: '✅' },
+  item_viewed:       { label: 'Listing viewed', emoji: '🔍' },
+  item_proposed:     { label: 'Listing submitted', emoji: '📝' },
+  item_approved:     { label: 'Listing approved', emoji: '🚀' },
+  config_updated:    { label: 'Settings saved', emoji: '⚙️' },
+}
+
 export default function AdminDashboard() {
   const [tab, setTab] = useState('listings')
   const [pending, setPending] = useState([])
   const [published, setPublished] = useState([])
   const [enquiries, setEnquiries] = useState([])
+  const [events, setEvents] = useState([])
   const [approveTarget, setApproveTarget] = useState(null)
 
   const load = () => {
     fetch('/api/items/pending').then(r => r.json()).then(setPending).catch(() => setPending([]))
     fetch('/api/items').then(r => r.json()).then(setPublished).catch(() => setPublished([]))
     fetch('/api/enquiries').then(r => r.json()).then(setEnquiries).catch(() => setEnquiries([]))
+    getAuditEvents().then(setEvents).catch(() => setEvents([]))
   }
 
   useEffect(load, [])
@@ -181,6 +196,7 @@ export default function AdminDashboard() {
     { id: 'listings', label: `Listings${pending.length ? ` (${pending.length} pending)` : ''}` },
     { id: 'enquiries', label: `Enquiries${pendingEnquiries.length ? ` (${pendingEnquiries.length})` : ''}` },
     { id: 'calendar', label: 'Calendar' },
+    { id: 'activity', label: `Activity${events.length ? ` (${events.length})` : ''}` },
   ]
 
   return (
@@ -330,6 +346,39 @@ export default function AdminDashboard() {
             </div>
           )}
           <Calendar bookings={enquiries} items={allItems} />
+        </div>
+      )}
+
+      {/* ── Activity tab ── */}
+      {tab === 'activity' && (
+        <div>
+          <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '1rem' }}>
+            Every click, enquiry, and action tracked in real time.
+          </p>
+          {events.length === 0 ? (
+            <p style={{ color: '#9ca3af' }}>No activity recorded yet — interactions will appear here once users visit the storefront.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {events.map(e => {
+                const meta = EVENT_LABELS[e.event_type] || { label: e.event_type, emoji: '📌' }
+                const time = new Date(e.created_at)
+                return (
+                  <div key={e.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '0.65rem 1rem' }}>
+                    <span style={{ fontSize: '1.1rem', lineHeight: 1.4 }}>{meta.emoji}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#374151' }}>{meta.label}</span>
+                      {e.details && (
+                        <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '0.5rem' }}>{e.details}</span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#9ca3af', whiteSpace: 'nowrap', marginTop: 2 }}>
+                      {time.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
