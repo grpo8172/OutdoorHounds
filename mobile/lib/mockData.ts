@@ -19,6 +19,8 @@ export interface Profile {
   videoUrl?: string;
   price?: string;
   rating?: number;
+  cardColor?: string;
+  tileDescription?: string;
 }
 
 export const mockProfiles: Profile[] = [

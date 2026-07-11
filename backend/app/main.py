@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import os, uuid, shutil
@@ -37,6 +38,18 @@ app.add_middleware(
 )
 
 
+_bearer = HTTPBearer(auto_error=False)
+
+def get_admin(credentials: HTTPAuthorizationCredentials = Depends(_bearer)):
+    """Require a valid admin token on protected endpoints."""
+    admin_password = os.environ.get("ADMIN_PASSWORD", "")
+    if not admin_password:
+        raise HTTPException(status_code=500, detail="ADMIN_PASSWORD not set on this server.")
+    if not credentials or credentials.credentials != admin_password:
+        raise HTTPException(status_code=401, detail="Invalid or missing admin token.")
+    return True
+
+
 def _log(db: Session, event_type: str, details: str) -> None:
     """Append an immutable audit event. Centralised so every state change is traceable."""
     db.add(models.AuditEvent(event_type=event_type, details=details))
@@ -45,6 +58,16 @@ def _log(db: Session, event_type: str, details: str) -> None:
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.post("/api/admin/login")
+def admin_login(body: dict):
+    admin_password = os.environ.get("ADMIN_PASSWORD", "")
+    if not admin_password:
+        raise HTTPException(status_code=500, detail="ADMIN_PASSWORD not configured.")
+    if body.get("password") != admin_password:
+        raise HTTPException(status_code=401, detail="Incorrect password.")
+    return {"token": admin_password}
 
 
 @app.get("/api/items", response_model=List[schemas.CatalogueItemResponse])
@@ -60,7 +83,7 @@ def get_items(
 
 
 @app.get("/api/items/pending", response_model=List[schemas.CatalogueItemResponse])
-def get_pending_items(db: Session = Depends(get_db)):
+def get_pending_items(db: Session = Depends(get_db), _=Depends(get_admin)):
     """Admin review queue: items proposed by the assistant awaiting owner approval."""
     return db.query(models.CatalogueItem).filter(models.CatalogueItem.status == "pending_review").all()
 
@@ -89,7 +112,7 @@ def create_item(item: schemas.CatalogueItemCreate, db: Session = Depends(get_db)
 
 
 @app.post("/api/items/{item_id}/approve")
-def approve_item(item_id: int, db: Session = Depends(get_db)):
+def approve_item(item_id: int, db: Session = Depends(get_db), _=Depends(get_admin)):
     """Owner approval gate: the only path that makes a listing publicly visible."""
     item = db.query(models.CatalogueItem).filter(models.CatalogueItem.id == item_id).first()
     if not item:
@@ -101,7 +124,7 @@ def approve_item(item_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/api/enquiries", response_model=List[schemas.EnquiryResponse])
-def list_enquiries(db: Session = Depends(get_db)):
+def list_enquiries(db: Session = Depends(get_db), _=Depends(get_admin)):
     """Owner enquiry inbox."""
     return db.query(models.Enquiry).order_by(models.Enquiry.created_at.desc()).all()
 
@@ -121,7 +144,7 @@ def create_enquiry(enquiry: schemas.EnquiryCreate, db: Session = Depends(get_db)
 
 
 @app.post("/api/enquiries/{enquiry_id}/decide")
-def decide_enquiry(enquiry_id: int, approve: bool, booking_date: Optional[str] = None, db: Session = Depends(get_db)):
+def decide_enquiry(enquiry_id: int, approve: bool, booking_date: Optional[str] = None, db: Session = Depends(get_db), _=Depends(get_admin)):
     """Owner decision on an adoption/booking/sitting enquiry."""
     enquiry = db.query(models.Enquiry).filter(models.Enquiry.id == enquiry_id).first()
     if not enquiry:
@@ -135,7 +158,7 @@ def decide_enquiry(enquiry_id: int, approve: bool, booking_date: Optional[str] =
 
 
 @app.get("/api/audit", response_model=List[schemas.AuditEventResponse])
-def get_audit(db: Session = Depends(get_db)):
+def get_audit(db: Session = Depends(get_db), _=Depends(get_admin)):
     """Audit trail: which signals/actions drove each decision."""
     return db.query(models.AuditEvent).order_by(models.AuditEvent.created_at.desc()).limit(200).all()
 
@@ -193,7 +216,7 @@ def get_config(db: Session = Depends(get_db)):
 
 
 @app.put("/api/config", response_model=schemas.OwnerConfigResponse)
-def update_config(update: schemas.OwnerConfigUpdate, db: Session = Depends(get_db)):
+def update_config(update: schemas.OwnerConfigUpdate, db: Session = Depends(get_db), _=Depends(get_admin)):
     config = db.query(models.OwnerConfig).first()
     if not config:
         config = models.OwnerConfig(mode_config=DEFAULT_MODE_CONFIG, hero_photos=[])
@@ -207,7 +230,7 @@ def update_config(update: schemas.OwnerConfigUpdate, db: Session = Depends(get_d
 
 
 @app.post("/api/config/photos")
-async def upload_config_photo(files: List[UploadFile] = File(...)):
+async def upload_config_photo(files: List[UploadFile] = File(...), _=Depends(get_admin)):
     urls = []
     for file in files:
         ext = os.path.splitext(file.filename or "")[1] or ".jpg"

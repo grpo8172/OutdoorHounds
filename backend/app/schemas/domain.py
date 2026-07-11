@@ -20,6 +20,7 @@ class OwnerConfigResponse(BaseModel):
     chat_disclaimer: Optional[str] = None
     mode_config: List[ModeConfig]
     hero_photos: List[str]
+    brand_color: Optional[str] = "#e8843c"
 
     class Config:
         from_attributes = True
@@ -33,6 +34,7 @@ class OwnerConfigUpdate(BaseModel):
     chat_disclaimer: Optional[str] = None
     mode_config: Optional[List[ModeConfig]] = None
     hero_photos: Optional[List[str]] = None
+    brand_color: Optional[str] = None
 
 class CatalogueItemBase(BaseModel):
     item_type: str

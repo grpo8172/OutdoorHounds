@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getConfig, updateConfig, uploadConfigPhotos } from '../../api/client'
+import AdminLoginGate, { useAdminAuth } from '../admin-auth/AdminLoginGate'
 
 const DEFAULT_MODES = [
   { key: 'pet',                 active: true, emoji: '🐾', label: 'Adopt / Foster' },
@@ -33,7 +34,25 @@ function writeCache(data) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
 }
 
+const BRAND_COLORS = [
+  { label: 'Orange',  value: '#e8843c' },
+  { label: 'Teal',    value: '#0d9488' },
+  { label: 'Indigo',  value: '#4f46e5' },
+  { label: 'Rose',    value: '#e11d48' },
+  { label: 'Amber',   value: '#d97706' },
+  { label: 'Green',   value: '#16a34a' },
+  { label: 'Sky',     value: '#0284c7' },
+  { label: 'Purple',  value: '#9333ea' },
+]
+
 export default function OwnerSetup() {
+  const { isAdmin, onLogin } = useAdminAuth()
+  if (!isAdmin) return <AdminLoginGate onLogin={onLogin} />
+
+  return <OwnerSetupInner />
+}
+
+function OwnerSetupInner() {
   const [config, setConfig] = useState(() => readCache() ?? mergeConfig({
     business_name: 'Outdoor Hounds',
     site_emoji: '🐾',
@@ -43,6 +62,7 @@ export default function OwnerSetup() {
     chat_disclaimer: '',
     mode_config: [],
     hero_photos: [],
+    brand_color: '#e8843c',
   }))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -92,6 +112,7 @@ export default function OwnerSetup() {
         chat_disclaimer: config.chat_disclaimer,
         mode_config: config.mode_config,
         hero_photos: config.hero_photos,
+        brand_color: config.brand_color,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -134,6 +155,33 @@ export default function OwnerSetup() {
         <input style={inputStyle} value={config.tagline}
           onChange={e => setConfig({ ...config, tagline: e.target.value })}
           placeholder="e.g. Find your next adventure or join a group" />
+      </section>
+
+      {/* Brand colour */}
+      <section style={sectionStyle}>
+        <h3 style={headingStyle}>Brand colour</h3>
+        <p style={{ fontSize: '0.85rem', color: '#777', margin: '0 0 1rem' }}>
+          Sets the accent colour used across your storefront, buttons, and tile cards.
+        </p>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {BRAND_COLORS.map(c => (
+            <button
+              key={c.value}
+              title={c.label}
+              onClick={() => setConfig({ ...config, brand_color: c.value })}
+              style={{
+                width: 40, height: 40, borderRadius: '50%',
+                backgroundColor: c.value,
+                border: config.brand_color === c.value ? '3px solid #111' : '2px solid transparent',
+                boxShadow: config.brand_color === c.value ? '0 0 0 2px #fff, 0 0 0 4px #111' : 'none',
+                cursor: 'pointer',
+              }}
+            />
+          ))}
+        </div>
+        <p style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '0.6rem' }}>
+          Selected: <span style={{ color: config.brand_color, fontWeight: 600 }}>{config.brand_color}</span>
+        </p>
       </section>
 
       {/* Mode config */}

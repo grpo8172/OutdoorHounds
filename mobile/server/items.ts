@@ -51,6 +51,8 @@ const listingMetaSchema = z
     indoor_outdoor:    z.string().optional(),
     safety_notes:      z.string().optional(),
     insurance_notes:   z.string().optional(),
+    cardColor:         z.string().optional(),
+    tileDescription:   z.string().optional(),
   })
   .optional();
 
@@ -165,6 +167,8 @@ export const itemsRouter = router({
         breed: z.string().optional(),
         age: z.number().int().positive().optional(),
         contact: z.string().optional(),
+        cardColor: z.string().optional(),
+        tileDescription: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -187,7 +191,7 @@ export const itemsRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const { mode, imageUrls, videoUrl, location, breed, age, contact, ...rest } = input;
+      const { mode, imageUrls, videoUrl, location, breed, age, contact, cardColor, tileDescription, ...rest } = input;
       const photos = imageUrls?.filter(Boolean) ?? [];
 
       const coords = location ? await geocode(location) : null;
@@ -203,9 +207,11 @@ export const itemsRouter = router({
           photos,
           videoUrl: videoUrl || undefined,
           location: location || undefined,
-          breed:    breed    || undefined,
-          age:      age      || undefined,
-          contact:  contact  || undefined,
+          breed:            breed            || undefined,
+          age:              age              || undefined,
+          contact:          contact          || undefined,
+          cardColor:        cardColor        || undefined,
+          tileDescription:  tileDescription  || undefined,
         },
         status: "approved",
       });

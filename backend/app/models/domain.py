@@ -72,6 +72,7 @@ class OwnerConfig(Base):
         {"key": "petting_zoo_booking", "active": True, "emoji": "🐑", "label": "Mini Petting Zoo"},
     ])
     hero_photos = Column(JSON, default=lambda: [])
+    brand_color = Column(String(16), default="#e8843c")
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 class Profile(Base):

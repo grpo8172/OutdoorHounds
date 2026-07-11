@@ -56,6 +56,8 @@ function catalogueItemToProfile(item: FeedItem): Profile {
     videoUrl: meta.videoUrl ?? undefined,
     price: item.price ?? undefined,
     rating: typeof meta.rating === "number" ? meta.rating : undefined,
+    cardColor: typeof meta.cardColor === "string" ? meta.cardColor : undefined,
+    tileDescription: typeof meta.tileDescription === "string" ? meta.tileDescription : undefined,
   };
 }
 

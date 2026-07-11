@@ -6,7 +6,6 @@ import { trpc } from "@/lib/trpc";
 import { router } from "expo-router";
 import { useState } from "react";
 import { startOAuthLogin } from "@/constants/oauth";
-import { UNLOCK_PRICE_LABEL } from "@shared/const";
 import { showAlert } from "@/lib/alert";
 
 const PROFILE_TYPE_LABELS: Record<string, string> = {
@@ -68,40 +67,28 @@ export default function SettingsScreen() {
             >
               <View className="flex-row justify-between items-start">
                 <View className="flex-1 gap-1">
+                  <Text className="text-xs text-muted uppercase" style={{ letterSpacing: 0.5 }}>User Profile</Text>
                   <Text className="text-base font-bold text-foreground">
-                    {profile?.displayName ?? user.name ?? "My Profile"}
+                    {user.loginMethod === "dev"
+                      ? "Temp user"
+                      : (profile?.displayName ?? user.name ?? "My Profile")}
                   </Text>
-                  {profile?.profileType && (
+                  {user.loginMethod !== "dev" && profile?.profileType && (
                     <Text className="text-sm text-muted">
                       {PROFILE_TYPE_LABELS[profile.profileType] ??
                         profile.profileType}
                     </Text>
                   )}
-                  {profile?.location && (
+                  {user.loginMethod !== "dev" && profile?.location && (
                     <Text className="text-xs text-muted">
                       {profile.location}
                     </Text>
                   )}
                 </View>
-                <Text className="text-xs text-primary font-semibold">Edit</Text>
+                {user.loginMethod !== "dev" && (
+                  <Text className="text-xs text-primary font-semibold">Edit</Text>
+                )}
               </View>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Unlock */}
-        {user && (
-          <View className="px-6 pb-4">
-            <Pressable
-              onPress={() => router.push("/subscribe")}
-              className="bg-primary/10 rounded-lg p-4 border border-primary gap-1 active:opacity-70"
-            >
-              <Text className="text-base font-bold text-primary">
-                Unlock Outdoor Hounds
-              </Text>
-              <Text className="text-sm text-muted">
-                One-time {UNLOCK_PRICE_LABEL} payment via PayPal unlocks unlimited listings
-              </Text>
             </Pressable>
           </View>
         )}

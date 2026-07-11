@@ -99,12 +99,18 @@ export function ProfileCard({
       }}
     >
       {/* Image */}
-      <View style={{ width: "100%", height: 200, backgroundColor: "#e5e7eb", position: "relative", borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: "hidden" }}>
-        <Image
-          source={{ uri: profile.images[0] }}
-          style={{ width: "100%", height: "100%" }}
-          resizeMode="cover"
-        />
+      <View style={{ width: "100%", height: 200, backgroundColor: profile.cardColor ?? "#e5e7eb", position: "relative", borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: "hidden" }}>
+        {profile.images[0] ? (
+          <Image
+            source={{ uri: profile.images[0] }}
+            style={{ width: "100%", height: "100%" }}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ fontSize: 64 }}>🐾</Text>
+          </View>
+        )}
 
         {/* SAVE badge */}
         <Animated.View
@@ -174,6 +180,12 @@ export function ProfileCard({
         </View>
 
         <Text style={{ fontSize: 13, color: "#6b7280" }}>📍 {profile.location}{profile.distance ? ` • ${profile.distance}km away` : ""}</Text>
+
+        {profile.tileDescription ? (
+          <Text style={{ fontSize: 14, color: profile.cardColor ?? "#e8843c", fontWeight: "600", marginTop: 2 }}>
+            {profile.tileDescription}
+          </Text>
+        ) : null}
 
         <Text style={{ fontSize: 13, color: "#374151", lineHeight: 20, marginTop: 4 }}>
           {profile.description.substring(0, 100)}{profile.description.length > 100 ? "..." : ""}

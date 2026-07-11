@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
-import { getAuditEvents } from '../../api/client'
+import { getAuditEvents, getPendingItems, approveItem, getEnquiries, decideEnquiry } from '../../api/client'
+import AdminLoginGate, { useAdminAuth } from '../admin-auth/AdminLoginGate'
 
 const TYPE_LABELS = {
   pet: 'Adopt / Foster', hike: 'Group Hike', service: 'Pet Services',
@@ -154,6 +155,14 @@ const EVENT_LABELS = {
 }
 
 export default function AdminDashboard() {
+  const { isAdmin, logout, onLogin } = useAdminAuth()
+
+  if (!isAdmin) return <AdminLoginGate onLogin={onLogin} />
+
+  return <AdminDashboardInner onLogout={logout} />
+}
+
+function AdminDashboardInner({ onLogout }) {
   const [tab, setTab] = useState('listings')
   const [pending, setPending] = useState([])
   const [published, setPublished] = useState([])
@@ -162,28 +171,27 @@ export default function AdminDashboard() {
   const [approveTarget, setApproveTarget] = useState(null)
 
   const load = () => {
-    fetch('/api/items/pending').then(r => r.json()).then(setPending).catch(() => setPending([]))
+    getPendingItems().then(setPending).catch(() => setPending([]))
     fetch('/api/items').then(r => r.json()).then(setPublished).catch(() => setPublished([]))
-    fetch('/api/enquiries').then(r => r.json()).then(setEnquiries).catch(() => setEnquiries([]))
+    getEnquiries().then(setEnquiries).catch(() => setEnquiries([]))
     getAuditEvents().then(setEvents).catch(() => setEvents([]))
   }
 
   useEffect(load, [])
 
   const approveListing = async (id) => {
-    await fetch(`/api/items/${id}/approve`, { method: 'POST' })
+    await approveItem(id)
     load()
   }
 
   const approveEnquiry = async (id, bookingDate) => {
-    const url = `/api/enquiries/${id}/decide?approve=true${bookingDate ? `&booking_date=${bookingDate}` : ''}`
-    await fetch(url, { method: 'POST' })
+    await decideEnquiry(id, true)
     setApproveTarget(null)
     load()
   }
 
   const rejectEnquiry = async (id) => {
-    await fetch(`/api/enquiries/${id}/decide?approve=false`, { method: 'POST' })
+    await decideEnquiry(id, false)
     load()
   }
 
@@ -210,10 +218,17 @@ export default function AdminDashboard() {
         />
       )}
 
-      <h2 style={{ marginBottom: '0.25rem' }}>Admin Dashboard</h2>
-      <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-        Approve listings, manage bookings, and view your calendar.
-      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+        <div>
+          <h2 style={{ marginBottom: '0.25rem' }}>Admin Dashboard</h2>
+          <p style={{ color: '#9ca3af', fontSize: '0.85rem', margin: 0 }}>
+            Approve listings, manage bookings, and view your calendar.
+          </p>
+        </div>
+        <button onClick={onLogout} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.4rem 0.9rem', color: '#777', cursor: 'pointer', fontSize: '0.85rem' }}>
+          Sign out
+        </button>
+      </div>
 
       {/* Stats row */}
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.75rem' }}>

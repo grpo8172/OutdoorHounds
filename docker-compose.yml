@@ -14,6 +14,7 @@ services:
       LLM_ENABLED: "false"
       LLM_PROVIDER: mock
       LLM_MODEL: mock-model-v1
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-outdoorhounds_admin}
     depends_on:
       db:
         condition: service_healthy

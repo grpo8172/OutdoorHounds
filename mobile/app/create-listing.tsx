@@ -24,6 +24,7 @@ const EMPTY_FORM = {
   mode: "" as AppMode | "",
   name: "",
   description: "",
+  tileDescription: "",
   price: "",
   location: "",
   breed: "",
@@ -277,6 +278,7 @@ function ListingForm() {
       breed: form.breed.trim() || undefined,
       age: modeFields?.showAge && !isNaN(ageNum) ? ageNum : undefined,
       contact: form.contact.trim() || undefined,
+      tileDescription: form.tileDescription.trim() || undefined,
     });
   };
 
@@ -423,6 +425,15 @@ function ListingForm() {
               value={form.price}
               onChangeText={set("price")}
               placeholder="e.g. Free, $25/walk, $10–30"
+            />
+          </Field>
+
+          {/* Tile description */}
+          <Field label="Card tagline (optional)">
+            <Input
+              value={form.tileDescription}
+              onChangeText={set("tileDescription")}
+              placeholder="Short line shown on the swipe card, e.g. 'Gentle & great with kids'"
             />
           </Field>
 

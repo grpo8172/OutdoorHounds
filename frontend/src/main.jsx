@@ -18,6 +18,7 @@ function App() {
       .then(d => {
         if (d.business_name) setSiteName(d.business_name)
         if (d.site_emoji) setSiteEmoji(d.site_emoji)
+        if (d.brand_color) document.documentElement.style.setProperty('--brand', d.brand_color)
       })
       .catch(() => {})
   }, [])
