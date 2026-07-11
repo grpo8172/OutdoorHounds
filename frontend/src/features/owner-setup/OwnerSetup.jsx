@@ -45,14 +45,18 @@ const BRAND_COLORS = [
   { label: 'Purple',  value: '#9333ea' },
 ]
 
-export default function OwnerSetup() {
-  const { isAdmin, onLogin } = useAdminAuth()
-  if (!isAdmin) return <AdminLoginGate onLogin={onLogin} />
+const MOBILE_APP_URL = import.meta.env.VITE_MOBILE_APP_URL || 'http://localhost:8081'
 
-  return <OwnerSetupInner />
+export default function OwnerSetup() {
+  const { isAdmin, isTryout, checking, onLogin, onTryout } = useAdminAuth()
+
+  if (checking) return <div style={{ textAlign: 'center', marginTop: '8rem', color: '#9ca3af' }}>Checking access…</div>
+  if (!isAdmin) return <AdminLoginGate onLogin={onLogin} onTryout={onTryout} />
+
+  return <OwnerSetupInner isTryout={isTryout} />
 }
 
-function OwnerSetupInner() {
+function OwnerSetupInner({ isTryout }) {
   const [config, setConfig] = useState(() => readCache() ?? mergeConfig({
     business_name: 'Outdoor Hounds',
     site_emoji: '🐾',
@@ -125,6 +129,17 @@ function OwnerSetupInner() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '1.5rem' }}>
+      {isTryout && (
+        <div style={{ background: '#fff7f0', border: '1px solid #fcd9b6', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.875rem', color: '#92400e' }}>
+            👀 <strong>Preview mode</strong> — explore the settings but saving is locked.
+          </span>
+          <a href={`${MOBILE_APP_URL}/admin-subscribe`} target="_blank" rel="noreferrer"
+            style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e8843c', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            Unlock for $30 →
+          </a>
+        </div>
+      )}
       <h2 style={{ marginBottom: '0.25rem' }}>Owner Setup</h2>
       <p style={{ color: '#777', marginBottom: '2rem' }}>
         Customise your site name, categories, and photos. Works for any community — not just pets.
@@ -305,10 +320,20 @@ function OwnerSetupInner() {
 
       {/* Save */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <button className="btn" onClick={save} disabled={saving || !hasActive}
-          style={{ backgroundColor: '#e8843c', color: '#fff', border: 'none', opacity: saving ? 0.7 : 1 }}>
-          {saving ? 'Saving…' : 'Save & Publish'}
-        </button>
+        {isTryout ? (
+          <a href={`${MOBILE_APP_URL}/admin-subscribe`} target="_blank" rel="noreferrer"
+            style={{ textDecoration: 'none' }}
+            title="Pay $30 to unlock saving">
+            <button className="btn" disabled style={{ backgroundColor: '#9ca3af', color: '#fff', border: 'none', cursor: 'not-allowed', opacity: 0.55 }}>
+              🔒 Save & Publish
+            </button>
+          </a>
+        ) : (
+          <button className="btn" onClick={save} disabled={saving || !hasActive}
+            style={{ backgroundColor: '#e8843c', color: '#fff', border: 'none', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Saving…' : 'Save & Publish'}
+          </button>
+        )}
         {saved && <span style={{ color: '#16a34a', fontWeight: 600 }}>✓ Saved — storefront updated</span>}
       </div>
     </div>

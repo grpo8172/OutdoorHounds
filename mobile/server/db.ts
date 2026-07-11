@@ -162,16 +162,21 @@ export async function recordVerifiedPayment(
   amountCents: number,
   currency: string,
   transactionId: string,
-): Promise<void> {
+  tier: "listing" | "admin" = "listing",
+): Promise<string | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  const adminToken = tier === "admin" ? crypto.randomUUID() : null;
   await db.insert(subscriptions).values({
     userId,
     amountCents,
     currency,
     transactionId,
     status: "active",
+    tier,
+    adminToken,
   });
+  return adminToken;
 }
 
 // Guards against double-recording if a client retries captureOrder for the
@@ -200,6 +205,40 @@ export async function hasActiveSubscription(userId: number): Promise<boolean> {
     )
     .limit(1);
   return result.length > 0;
+}
+
+export async function hasActiveAdminSubscription(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db
+    .select({ id: subscriptions.id })
+    .from(subscriptions)
+    .where(
+      and(
+        eq(subscriptions.userId, userId),
+        eq(subscriptions.status, "active"),
+        eq(subscriptions.tier, "admin"),
+      ),
+    )
+    .limit(1);
+  return result.length > 0;
+}
+
+export async function getAdminTokenForUser(userId: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select({ adminToken: subscriptions.adminToken })
+    .from(subscriptions)
+    .where(
+      and(
+        eq(subscriptions.userId, userId),
+        eq(subscriptions.status, "active"),
+        eq(subscriptions.tier, "admin"),
+      ),
+    )
+    .limit(1);
+  return result.length > 0 ? (result[0].adminToken ?? null) : null;
 }
 
 // ── Swipes (saved listings) ──────────────────────────────────────────────────

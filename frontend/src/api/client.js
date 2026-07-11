@@ -22,6 +22,19 @@ export async function adminLogin(password) {
   return data;
 }
 
+export async function verifyAdminToken() {
+  const token = getAdminToken();
+  if (!token) return false;
+  try {
+    const res = await fetch(`${BASE}/audit`, { headers: adminHeaders() });
+    if (res.ok) return true;
+    if (res.status === 401) clearAdminToken();
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export async function getItems() {
   const res = await fetch(`${BASE}/items`);
   return res.json();

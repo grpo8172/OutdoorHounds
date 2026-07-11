@@ -1,0 +1,13 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - build
+  - -f
+  - Dockerfile.web
+  - --build-arg
+  - EXPO_PUBLIC_API_BASE_URL=${_MOBILE_API_URL}
+  - -t
+  - ${_IMAGE}
+  - .
+images:
+- ${_IMAGE}

@@ -1,11 +1,13 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { UNLOCK_PRICE_CENTS } from "../shared/const.js";
+import { UNLOCK_PRICE_CENTS, ADMIN_UNLOCK_PRICE_CENTS } from "../shared/const.js";
 import { protectedProcedure, router } from "./_core/trpc";
 import {
   hasActiveSubscription,
+  hasActiveAdminSubscription,
   hasSubscriptionForTransaction,
   recordVerifiedPayment,
+  getAdminTokenForUser,
 } from "./db";
 import { capturePayPalOrder, createPayPalOrder } from "./_core/paypal";
 
@@ -57,8 +59,54 @@ export const subscriptionsRouter = router({
         capture.amountCents ?? UNLOCK_PRICE_CENTS,
         capture.currency ?? UNLOCK_CURRENCY,
         transactionId,
+        "listing",
       );
 
       return { success: true };
     }),
+
+  createAdminOrder: protectedProcedure
+    .input(z.object({ returnUrl: z.string().url(), cancelUrl: z.string().url() }))
+    .mutation(async ({ input }) => {
+      const { orderId, approveUrl } = await createPayPalOrder({
+        amountCents: ADMIN_UNLOCK_PRICE_CENTS,
+        currency: UNLOCK_CURRENCY,
+        returnUrl: input.returnUrl,
+        cancelUrl: input.cancelUrl,
+      });
+      return { orderId, approveUrl };
+    }),
+
+  captureAdminOrder: protectedProcedure
+    .input(z.object({ orderId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const capture = await capturePayPalOrder(input.orderId);
+
+      if (capture.status !== "COMPLETED") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "PayPal payment was not completed" });
+      }
+
+      const transactionId = capture.transactionId ?? input.orderId;
+
+      if (await hasSubscriptionForTransaction(transactionId)) {
+        const token = await getAdminTokenForUser(ctx.user.id);
+        return { success: true, adminToken: token };
+      }
+
+      const adminToken = await recordVerifiedPayment(
+        ctx.user.id,
+        capture.amountCents ?? ADMIN_UNLOCK_PRICE_CENTS,
+        capture.currency ?? UNLOCK_CURRENCY,
+        transactionId,
+        "admin",
+      );
+
+      return { success: true, adminToken };
+    }),
+
+  getAdminStatus: protectedProcedure.query(async ({ ctx }) => {
+    const active = await hasActiveAdminSubscription(ctx.user.id);
+    const adminToken = active ? await getAdminTokenForUser(ctx.user.id) : null;
+    return { active, adminToken };
+  }),
 });

@@ -1,6 +1,6 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.js";
 import type { Express, Request, Response } from "express";
-import { getUserByOpenId, upsertUser, getOrCreateProfile } from "../db";
+import { getUserByOpenId, upsertUser, getOrCreateProfile, hasActiveAdminSubscription, getAdminTokenForUser } from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk, exchangeGoogleCode } from "./sdk";
 import { ENV } from "./env";
@@ -166,6 +166,59 @@ export function registerOAuthRoutes(app: Express) {
     res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
     res.json({ success: true, sessionToken, user: buildUserResponse(user) });
+  });
+
+  // Builds and redirects to the Google OAuth URL. Used by external pages
+  // (e.g. the web admin gate) that need to initiate Google sign-in without
+  // knowing the client credentials themselves.
+  app.get("/api/oauth/google/initiate", (req: Request, res: Response) => {
+    if (!ENV.googleClientId || !ENV.googleRedirectUri) {
+      res.status(503).json({ error: "Google OAuth is not configured on this server." });
+      return;
+    }
+    const returnTo = getQueryParam(req, "returnTo") || "/";
+    const platform = (getQueryParam(req, "platform") || "native") as OAuthState["platform"];
+    const state = Buffer.from(JSON.stringify({ returnTo, platform })).toString("base64");
+    const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    url.searchParams.set("client_id", ENV.googleClientId);
+    url.searchParams.set("redirect_uri", ENV.googleRedirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "openid email profile");
+    url.searchParams.set("state", state);
+    res.redirect(302, url.toString());
+  });
+
+  // Called by the web admin gate after Google OAuth completes. Verifies the
+  // session token, checks for an active admin subscription, and returns the
+  // admin access token if the user has paid.
+  app.post("/api/admin/google-login", async (req: Request, res: Response) => {
+    const { sessionToken } = req.body || {};
+    if (!sessionToken || typeof sessionToken !== "string") {
+      res.status(400).json({ error: "sessionToken is required" });
+      return;
+    }
+    try {
+      const session = await sdk.verifySessionToken(sessionToken);
+      if (!session?.openId) {
+        res.status(401).json({ error: "Invalid session token" });
+        return;
+      }
+      const user = await getUserByOpenId(session.openId);
+      if (!user?.id) {
+        res.status(401).json({ error: "User not found" });
+        return;
+      }
+      const isAdmin = await hasActiveAdminSubscription(user.id);
+      if (!isAdmin) {
+        res.status(402).json({ error: "No admin subscription found. Please purchase admin access first." });
+        return;
+      }
+      const adminToken = await getAdminTokenForUser(user.id);
+      res.json({ adminToken });
+    } catch (err) {
+      console.error("[admin/google-login]", err);
+      res.status(401).json({ error: "Authentication failed" });
+    }
   });
 
   app.post("/api/auth/logout", (req: Request, res: Response) => {

@@ -90,7 +90,9 @@ export const subscriptions = mysqlTable("subscriptions", {
   currency: varchar("currency", { length: 8 }).notNull().default("USD"),
   // PayPal capture ID returned by the Orders API capture call. Unique per
   // payment — used to guard against double-recording the same capture.
-  transactionId: varchar("transaction_id", { length: 64 }),
+  transactionId: varchar("transaction_id", { length: 64 }).unique(),
+  tier: mysqlEnum("tier", ["listing", "admin"]).default("listing").notNull(),
+  adminToken: varchar("admin_token", { length: 64 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

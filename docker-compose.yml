@@ -14,7 +14,7 @@ services:
       LLM_ENABLED: "false"
       LLM_PROVIDER: mock
       LLM_MODEL: mock-model-v1
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-outdoorhounds_admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set in .env}
     depends_on:
       db:
         condition: service_healthy
@@ -59,7 +59,7 @@ services:
       NODE_ENV: development
       PORT: "3000"
       DATABASE_URL: mysql://app:apppassword@db:3306/outdoor_hounds
-      JWT_SECRET: change-me-in-production
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       VITE_APP_ID: ""
       OAUTH_SERVER_URL: ""
       OWNER_OPEN_ID: ""

@@ -28,7 +28,21 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+function assertSecrets() {
+  const missing = ["JWT_SECRET", "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET"]
+    .filter(k => !process.env[k]);
+  if (missing.length > 0) {
+    console.error(`[startup] Missing required environment variables: ${missing.join(", ")}`);
+    process.exit(1);
+  }
+  if (process.env.JWT_SECRET === "change-me-in-production") {
+    console.error("[startup] JWT_SECRET is still the insecure default. Set a strong random value in .env.");
+    process.exit(1);
+  }
+}
+
 async function startServer() {
+  assertSecrets();
   const app = express();
   const server = createServer(app);
 

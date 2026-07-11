@@ -171,3 +171,6 @@ class SDKServer {
 }
 
 export const sdk = new SDKServer();
+
+// Thin wrapper so callers outside this class can verify a raw JWT string.
+sdk.verifySessionToken = (token: string) => (sdk as any).verifySession(token);

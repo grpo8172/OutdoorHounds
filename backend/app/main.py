@@ -1,8 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File, Header
+from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from typing import List, Optional
 import os, uuid, shutil
 
@@ -14,7 +17,15 @@ from app.policy.guardrails import require_approval, validate_assistant_response
 
 Base.metadata.create_all(bind=engine)
 
+# Fail loudly at startup if critical secrets are missing.
+_admin_pw = os.environ.get("ADMIN_PASSWORD", "")
+if not _admin_pw:
+    raise RuntimeError("ADMIN_PASSWORD environment variable is not set. Refusing to start.")
+
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="Outdoor Hounds API")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 WEB_UPLOADS_DIR = "/app/web-uploads"
 os.makedirs(WEB_UPLOADS_DIR, exist_ok=True)
@@ -40,14 +51,27 @@ app.add_middleware(
 
 _bearer = HTTPBearer(auto_error=False)
 
-def get_admin(credentials: HTTPAuthorizationCredentials = Depends(_bearer)):
-    """Require a valid admin token on protected endpoints."""
-    admin_password = os.environ.get("ADMIN_PASSWORD", "")
-    if not admin_password:
-        raise HTTPException(status_code=500, detail="ADMIN_PASSWORD not set on this server.")
-    if not credentials or credentials.credentials != admin_password:
+def get_admin(credentials: HTTPAuthorizationCredentials = Depends(_bearer), db: Session = Depends(get_db)):
+    """Accept either the master ADMIN_PASSWORD or a paid admin subscription token."""
+    if not credentials:
         raise HTTPException(status_code=401, detail="Invalid or missing admin token.")
-    return True
+
+    token = credentials.credentials
+    admin_password = os.environ.get("ADMIN_PASSWORD", "")
+
+    if token == admin_password:
+        return True
+
+    row = db.execute(
+        __import__("sqlalchemy").text(
+            "SELECT id FROM subscriptions WHERE admin_token = :t AND tier = 'admin' AND status = 'active' LIMIT 1"
+        ),
+        {"t": token},
+    ).fetchone()
+    if row:
+        return True
+
+    raise HTTPException(status_code=401, detail="Invalid or missing admin token.")
 
 
 def _log(db: Session, event_type: str, details: str) -> None:
@@ -61,13 +85,21 @@ def health_check():
 
 
 @app.post("/api/admin/login")
-def admin_login(body: dict):
+@limiter.limit("10/minute")
+def admin_login(request: Request, body: dict, db: Session = Depends(get_db)):
     admin_password = os.environ.get("ADMIN_PASSWORD", "")
-    if not admin_password:
-        raise HTTPException(status_code=500, detail="ADMIN_PASSWORD not configured.")
-    if body.get("password") != admin_password:
-        raise HTTPException(status_code=401, detail="Incorrect password.")
-    return {"token": admin_password}
+    provided = body.get("password", "")
+    if provided == admin_password:
+        return {"token": admin_password}
+    row = db.execute(
+        __import__("sqlalchemy").text(
+            "SELECT id FROM subscriptions WHERE admin_token = :t AND tier = 'admin' AND status = 'active' LIMIT 1"
+        ),
+        {"t": provided},
+    ).fetchone()
+    if row:
+        return {"token": provided}
+    raise HTTPException(status_code=401, detail="Incorrect password or access token.")
 
 
 @app.get("/api/items", response_model=List[schemas.CatalogueItemResponse])

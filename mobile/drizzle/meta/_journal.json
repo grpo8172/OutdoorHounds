@@ -50,6 +50,20 @@
       "when": 1783090034917,
       "tag": "0006_eminent_katie_power",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1752192000000,
+      "tag": "0007_admin_subscription",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1752278400000,
+      "tag": "0008_unique_transaction_id",
+      "breakpoints": true
     }
   ]
 }

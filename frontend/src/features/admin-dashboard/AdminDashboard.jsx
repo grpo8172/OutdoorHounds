@@ -154,15 +154,43 @@ const EVENT_LABELS = {
   config_updated:    { label: 'Settings saved', emoji: '⚙️' },
 }
 
+const MOBILE_APP_URL = import.meta.env.VITE_MOBILE_APP_URL || 'http://localhost:8081'
+
 export default function AdminDashboard() {
-  const { isAdmin, logout, onLogin } = useAdminAuth()
+  const { isAdmin, isTryout, checking, logout, onLogin, onTryout } = useAdminAuth()
 
-  if (!isAdmin) return <AdminLoginGate onLogin={onLogin} />
+  if (checking) return <div style={{ textAlign: 'center', marginTop: '8rem', color: '#9ca3af' }}>Checking access…</div>
+  if (!isAdmin) return <AdminLoginGate onLogin={onLogin} onTryout={onTryout} />
 
-  return <AdminDashboardInner onLogout={logout} />
+  return <AdminDashboardInner onLogout={logout} isTryout={isTryout} />
 }
 
-function AdminDashboardInner({ onLogout }) {
+function TryoutBanner() {
+  return (
+    <div style={{ background: '#fff7f0', border: '1px solid #fcd9b6', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+      <span style={{ fontSize: '0.875rem', color: '#92400e' }}>
+        👀 <strong>Preview mode</strong> — you can explore but write actions are locked.
+      </span>
+      <a href={`${MOBILE_APP_URL}/admin-subscribe`} target="_blank" rel="noreferrer"
+        style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e8843c', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+        Unlock for $30 →
+      </a>
+    </div>
+  )
+}
+
+function LockedButton({ label, style }) {
+  return (
+    <a href={`${MOBILE_APP_URL}/admin-subscribe`} target="_blank" rel="noreferrer"
+      title="Pay $30 to unlock admin actions"
+      style={{ display: 'inline-block', opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'auto', textDecoration: 'none', ...style }}
+      onClick={e => { e.preventDefault(); window.open(`${MOBILE_APP_URL}/admin-subscribe`, '_blank') }}>
+      <span className="btn" style={{ background: '#9ca3af', pointerEvents: 'none' }}>🔒 {label}</span>
+    </a>
+  )
+}
+
+function AdminDashboardInner({ onLogout, isTryout }) {
   const [tab, setTab] = useState('listings')
   const [pending, setPending] = useState([])
   const [published, setPublished] = useState([])
@@ -209,6 +237,7 @@ function AdminDashboardInner({ onLogout }) {
 
   return (
     <div>
+      {isTryout && <TryoutBanner />}
       {approveTarget && (
         <ApproveModal
           enquiry={approveTarget}
@@ -271,9 +300,10 @@ function AdminDashboardInner({ onLogout }) {
                       <h3>{item.name}</h3>
                       <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>{item.description}</p>
                       {item.price && <p style={{ fontWeight: 600, color: '#e8843c' }}>{item.price}</p>}
-                      <button className="btn" style={{ background: '#e8843c', marginTop: '0.5rem' }} onClick={() => approveListing(item.id)}>
-                        Approve & Publish
-                      </button>
+                      {isTryout
+                        ? <LockedButton label="Approve & Publish" style={{ marginTop: '0.5rem' }} />
+                        : <button className="btn" style={{ background: '#e8843c', marginTop: '0.5rem' }} onClick={() => approveListing(item.id)}>Approve & Publish</button>
+                      }
                     </div>
                   </div>
                 ))}
@@ -322,8 +352,14 @@ function AdminDashboardInner({ onLogout }) {
                     <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{new Date(e.created_at).toLocaleString()}</div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'flex-start' }}>
-                    <button className="btn" style={{ background: '#e8843c', fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={() => setApproveTarget(e)}>Approve</button>
-                    <button className="btn btn--outline" style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', color: '#dc2626', borderColor: '#dc2626' }} onClick={() => rejectEnquiry(e.id)}>Decline</button>
+                    {isTryout ? (
+                      <LockedButton label="Approve" />
+                    ) : (
+                      <>
+                        <button className="btn" style={{ background: '#e8843c', fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={() => setApproveTarget(e)}>Approve</button>
+                        <button className="btn btn--outline" style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', color: '#dc2626', borderColor: '#dc2626' }} onClick={() => rejectEnquiry(e.id)}>Decline</button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
