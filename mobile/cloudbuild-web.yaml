@@ -5,11 +5,13 @@ steps:
   - -f
   - Dockerfile.web
   - --build-arg
-  - EXPO_PUBLIC_API_BASE_URL=${_MOBILE_API_URL}
+  - EXPO_PUBLIC_API_BASE_URL=
   - --build-arg
   - EXPO_PUBLIC_WEB_URL=${_WEB_URL}
   - --build-arg
   - EXPO_PUBLIC_GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}
+  - --build-arg
+  - MOBILE_API_ORIGIN=${_MOBILE_API_URL}
   - -t
   - ${_IMAGE}
   - .

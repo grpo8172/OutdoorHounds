@@ -11,4 +11,9 @@ export const ENV = {
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
   googleRedirectUri: process.env.GOOGLE_REDIRECT_URI ?? "",
+  // Web login now redirects through mobile-web's own domain (proxied to this
+  // service by nginx) rather than mobile-api's domain directly, so the
+  // browser never sees a cross-site cookie — required for Safari's ITP to
+  // accept the session cookie. Native is unaffected (token-in-URL, no cookie).
+  googleRedirectUriWeb: process.env.GOOGLE_REDIRECT_URI_WEB ?? "",
 };

@@ -90,6 +90,7 @@ services:
         EXPO_PUBLIC_OWNER_NAME: ""
         EXPO_PUBLIC_DEV_LOGIN_ENABLED: "true"
         EXPO_PUBLIC_WEB_URL: "http://localhost:8000"
+        MOBILE_API_ORIGIN: "http://mobile-api:3000"
     ports:
       - "8081:80"
     depends_on:

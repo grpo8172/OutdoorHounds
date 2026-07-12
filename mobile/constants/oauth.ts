@@ -62,9 +62,20 @@ export const getGoogleAuthUrl = () => {
   const platform = ReactNative.Platform.OS === "web" ? "web" : "native";
   const state = encodeState(JSON.stringify({ returnTo: getReturnTo(), platform }));
 
+  // On web, the redirect_uri must be mobile-web's own absolute origin (not
+  // the relative getApiBaseUrl()) — Google requires an absolute URL here,
+  // and using mobile-web's own domain (proxied to the API by nginx) keeps
+  // the whole flow same-origin, avoiding cross-site cookie rejection by
+  // Safari's ITP. Native keeps using the API's own absolute URL directly,
+  // since it authenticates via token-in-URL, not a cookie.
+  const redirectOrigin =
+    platform === "web"
+      ? typeof window !== "undefined" ? window.location.origin : ""
+      : getApiBaseUrl();
+
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", env.googleClientId);
-  url.searchParams.set("redirect_uri", `${getApiBaseUrl()}/api/oauth/google/callback`);
+  url.searchParams.set("redirect_uri", `${redirectOrigin}/api/oauth/google/callback`);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", "openid email profile");
   url.searchParams.set("state", state);

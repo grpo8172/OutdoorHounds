@@ -111,7 +111,11 @@ export function registerOAuthRoutes(app: Express) {
     }
 
     try {
-      const google = await exchangeGoogleCode(code, ENV.googleRedirectUri);
+      // Google requires the redirect_uri used here to exactly match the one
+      // sent in the original authorization request — which differs by
+      // platform (see googleRedirectUriWeb comment in env.ts).
+      const redirectUri = platform === "web" ? ENV.googleRedirectUriWeb : ENV.googleRedirectUri;
+      const google = await exchangeGoogleCode(code, redirectUri);
       const user = await syncUser({
         openId: google.openId,
         name: google.name,
