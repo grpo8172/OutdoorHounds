@@ -4,6 +4,18 @@ WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install
 COPY frontend/ ./
+
+# VITE_* vars are baked into the static build at compile time. These point
+# the admin Google sign-in gate (features/admin-auth/AdminLoginGate.jsx) at
+# the mobile-api backend and mobile-web app, which own the real Google OAuth
+# flow and the $30 admin-subscription check — this frontend has no OAuth
+# implementation of its own. Left unset, both fall back to localhost, which
+# is fine for local dev but silently breaks Google sign-in in production.
+ARG VITE_MOBILE_API_URL=""
+ARG VITE_MOBILE_APP_URL=""
+ENV VITE_MOBILE_API_URL=$VITE_MOBILE_API_URL
+ENV VITE_MOBILE_APP_URL=$VITE_MOBILE_APP_URL
+
 RUN npm run build
 
 # Stage 2: Backend + Serve

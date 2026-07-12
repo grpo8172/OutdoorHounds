@@ -22,6 +22,14 @@ const STANDARD_CTA = {
   event: 'Get Tickets', stall: 'Enquire', lost_found: 'I Think I Found Them',
 }
 
+// Sample/seed listings have no submitting user (mobile app submissions
+// always set user_id) — flag them so visitors don't mistake demo content
+// for real listings.
+function SampleBadge({ item }) {
+  if (item.user_id != null) return null
+  return <span className="tag sample">Sample</span>
+}
+
 function sendEnquiry(item, prefix, openModal) {
   trackEvent('enquiry_intent', `Item ${item.id}: ${item.name} — ${prefix}`)
   openModal({ ...item, name: `${item.name} — ${prefix}` })
@@ -39,6 +47,7 @@ function PettingZooCard({ item, saved, onSave, openModal }) {
       {item.image_url && <img src={item.image_url} alt={item.name} onError={e => { e.target.style.display = 'none' }} />}
       <div className="card-body">
         <span className="tag petting_zoo_booking">{ALL_TYPE_LABELS.petting_zoo_booking}</span>
+        <SampleBadge item={item} />
         <h3>{item.name}</h3>
         <p style={{ marginBottom: '1rem' }}>{item.description}</p>
         <dl className="zoo-details">
@@ -71,6 +80,7 @@ function StandardCard({ item, onEnquire, typeLabel }) {
       <img src={item.image_url || '/media/placeholder.jpg'} alt={item.name} onError={e => { e.target.style.display = 'none' }} />
       <div className="card-body">
         <span className={`tag ${item.item_type}`}>{typeLabel || ALL_TYPE_LABELS[item.item_type] || item.item_type}</span>
+        <SampleBadge item={item} />
         <h3>{item.name}</h3>
         <p>{item.description}</p>
         {item.price && <p><strong>{item.price}</strong></p>}

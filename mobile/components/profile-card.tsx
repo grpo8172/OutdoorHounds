@@ -99,12 +99,12 @@ export function ProfileCard({
       }}
     >
       {/* Image */}
-      <View style={{ width: "100%", height: 200, backgroundColor: profile.cardColor ?? "#e5e7eb", position: "relative", borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: "hidden" }}>
+      <View style={{ width: "100%", aspectRatio: 1, backgroundColor: profile.cardColor ?? "#e5e7eb", position: "relative", borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: "hidden" }}>
         {profile.images[0] ? (
           <Image
             source={{ uri: profile.images[0] }}
             style={{ width: "100%", height: "100%" }}
-            resizeMode="cover"
+            resizeMode="contain"
           />
         ) : (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>

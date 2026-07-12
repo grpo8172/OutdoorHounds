@@ -71,6 +71,7 @@ body {
 .tag.hike { background: var(--forest-light); }
 .tag.service { background: var(--accent); }
 .tag.petting_zoo_booking { background: #7b5ea7; }
+.tag.sample { background: #9ca3af; margin-left: 0.4rem; }
 
 .btn {
   background: var(--accent);

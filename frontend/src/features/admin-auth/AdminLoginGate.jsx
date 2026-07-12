@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { adminLogin, getAdminToken, setAdminToken, clearAdminToken, verifyAdminToken } from '../../api/client'
 
 export function useAdminAuth() {
@@ -25,9 +26,8 @@ const MOBILE_API_URL = import.meta.env.VITE_MOBILE_API_URL || 'http://localhost:
 const MOBILE_APP_URL = import.meta.env.VITE_MOBILE_APP_URL || 'http://localhost:8081'
 
 export default function AdminLoginGate({ onLogin, onTryout }) {
-  const [token, setToken] = useState('')
+  const navigate = useNavigate()
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
 
   // After Google OAuth, the callback redirects back here with
@@ -38,10 +38,12 @@ export default function AdminLoginGate({ onLogin, onTryout }) {
     const oauthError = params.get('error')
     if (!sessionToken && !oauthError) return
 
-    // Clean the URL immediately so a refresh doesn't retrigger this.
-    const clean = new URL(window.location.href)
-    clean.search = ''
-    window.history.replaceState({}, '', clean.toString())
+    // Clean the URL immediately so a refresh doesn't retrigger this. Uses
+    // React Router's own navigate() rather than raw history.replaceState —
+    // the latter changes the browser URL without React Router's internal
+    // location state ever being notified (no popstate fires for
+    // replaceState), leaving it stale and breaking subsequent <Link> clicks.
+    navigate(window.location.pathname, { replace: true })
 
     if (oauthError) {
       setError('Google sign-in failed. Try again or use your access token.')
@@ -77,28 +79,14 @@ export default function AdminLoginGate({ onLogin, onTryout }) {
     window.location.href = `${MOBILE_API_URL}/api/oauth/google/initiate?returnTo=${encodeURIComponent(returnTo)}&platform=native`
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    try {
-      const data = await adminLogin(token)
-      onLogin(data.token)
-    } catch {
-      setError('Incorrect password or access token. Try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const busy = loading || googleLoading
+  const busy = googleLoading
 
   return (
     <div style={{ maxWidth: 400, margin: '6rem auto', padding: '2rem', border: '1px solid #e5e7eb', borderRadius: 12, textAlign: 'center' }}>
       <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
       <h2 style={{ marginBottom: 6 }}>Admin access</h2>
       <p style={{ color: '#777', fontSize: '0.9rem', marginBottom: 24 }}>
-        Sign in with the Google account you used to purchase admin access, or enter your password below.
+        Sign in with the Google account you used to purchase admin access.
       </p>
 
       {/* Google sign-in */}
@@ -111,30 +99,7 @@ export default function AdminLoginGate({ onLogin, onTryout }) {
         {googleLoading ? 'Signing in…' : 'Sign in with Google'}
       </button>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-        <span style={{ fontSize: '0.8rem', color: '#aaa' }}>or</span>
-        <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-      </div>
-
-      {/* Password / token form */}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <input
-          type="password"
-          value={token}
-          onChange={e => setToken(e.target.value)}
-          placeholder="Password or access token"
-          style={{ padding: '0.6rem 0.9rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '1rem' }}
-        />
-        {error && <p style={{ color: '#dc2626', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
-        <button
-          type="submit"
-          disabled={busy || !token}
-          style={{ backgroundColor: '#e8843c', color: '#fff', border: 'none', borderRadius: 8, padding: '0.65rem', fontSize: '1rem', cursor: 'pointer', opacity: busy ? 0.7 : 1 }}
-        >
-          {loading ? 'Checking…' : 'Sign in'}
-        </button>
-      </form>
+      {error && <p style={{ color: '#dc2626', fontSize: '0.85rem', margin: '0 0 16px' }}>{error}</p>}
 
       <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #f0ece4', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {onTryout && (

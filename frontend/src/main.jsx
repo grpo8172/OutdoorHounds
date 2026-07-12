@@ -9,6 +9,8 @@ import ItemDetail from './features/storefront/ItemDetail'
 import { getConfig } from './api/client'
 import './index.css'
 
+const MOBILE_APP_URL = import.meta.env.VITE_MOBILE_APP_URL || 'http://localhost:8081'
+
 function App() {
   const [siteName, setSiteName] = useState('Outdoor Hounds')
   const [siteEmoji, setSiteEmoji] = useState('🐾')
@@ -30,6 +32,7 @@ function App() {
         <div className="nav-links">
           <Link to="/">Home</Link>
           <Link to="/chat">Ask Us</Link>
+          <a href={MOBILE_APP_URL} target="_blank" rel="noreferrer">Open the App</a>
           <Link to="/setup">Owner Setup</Link>
           <Link to="/admin">Admin</Link>
         </div>

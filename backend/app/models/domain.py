@@ -28,6 +28,10 @@ class CatalogueItem(Base):
     image_url = Column(String(512), nullable=True)
     status = Column(String(32), default="draft")
     listing_meta = Column(JSON, nullable=True)
+    # Null for legacy/admin-seeded sample listings (mirrors the mobile app's
+    # own convention — see mobile/drizzle/schema.ts's catalogueItems.userId
+    # comment). Used to flag sample cards on the storefront.
+    user_id = Column(Integer, nullable=True)
 
 class Enquiry(Base):
     __tablename__ = "web_enquiries"

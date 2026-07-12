@@ -292,11 +292,20 @@ def assistant_setup(prompt: str, llm: LLMProvider = Depends(get_llm_provider)):
 # Serve built frontend — catch-all so React Router handles /items/:id etc.
 frontend_dist = os.path.join(os.path.dirname(__file__), "../../frontend/dist")
 
+# index.html references content-hashed asset filenames (e.g. assets/index-XXXX.js),
+# so the assets themselves are safe to cache forever — but index.html itself must
+# never be cached, or browsers/proxies can keep serving a stale build (pointing at
+# an old, already-deleted hash) indefinitely, surviving even a hard refresh.
+_NO_CACHE_HEADERS = {"Cache-Control": "no-cache, no-store, must-revalidate"}
+_IMMUTABLE_CACHE_HEADERS = {"Cache-Control": "public, max-age=31536000, immutable"}
+
 @app.get("/{full_path:path}", include_in_schema=False)
 async def serve_spa(full_path: str):
     if os.path.exists(frontend_dist):
         file_path = os.path.join(frontend_dist, full_path)
+        if os.path.isfile(file_path) and full_path.startswith("assets/"):
+            return FileResponse(file_path, headers=_IMMUTABLE_CACHE_HEADERS)
         if os.path.isfile(file_path):
-            return FileResponse(file_path)
-        return FileResponse(os.path.join(frontend_dist, "index.html"))
+            return FileResponse(file_path, headers=_NO_CACHE_HEADERS)
+        return FileResponse(os.path.join(frontend_dist, "index.html"), headers=_NO_CACHE_HEADERS)
     raise HTTPException(status_code=404)

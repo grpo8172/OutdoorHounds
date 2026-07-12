@@ -50,6 +50,9 @@ class CatalogueItemCreate(CatalogueItemBase):
 class CatalogueItemResponse(CatalogueItemBase):
     id: int
     status: str
+    # Null means this is a sample/seed listing, not a real user submission
+    # (mobile app submissions always set this to the submitting user's id).
+    user_id: Optional[int] = None
 
     class Config:
         from_attributes = True
