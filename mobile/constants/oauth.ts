@@ -1,6 +1,6 @@
 import * as Linking from "expo-linking";
-import { Alert } from "react-native";
 import * as ReactNative from "react-native";
+import { showAlert } from "@/lib/alert";
 
 // Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
 // e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
@@ -89,7 +89,7 @@ export async function startOAuthLogin(): Promise<string | null> {
       console.warn("[OAuth] EXPO_PUBLIC_GOOGLE_CLIENT_ID is not set — OAuth will fail");
       console.log("[OAuth] API base URL:", getApiBaseUrl() || "(empty — relative URL will be used)");
     }
-    Alert.alert(
+    showAlert(
       "Sign-in not configured",
       "Google Sign-In isn't set up in this environment. Use 'Continue as test user' to sign in for testing.",
     );
