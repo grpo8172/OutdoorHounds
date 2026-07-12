@@ -78,6 +78,13 @@
       "when": 1783830000000,
       "tag": "0010_rename_guest_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1783855167447,
+      "tag": "0011_add_messaging_and_geo",
+      "breakpoints": true
     }
   ]
 }

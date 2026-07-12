@@ -67,7 +67,7 @@ services:
       BUILT_IN_FORGE_API_KEY: ""
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
-      PAYPAL_API_BASE: ${PAYPAL_API_BASE:-https://api-m.sandbox.paypal.com}
+      PAYPAL_API_BASE: ${PAYPAL_API_BASE:-https://api-m.paypal.com}
     volumes:
       - uploads-data:/app/uploads
     depends_on:

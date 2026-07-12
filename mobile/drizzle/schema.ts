@@ -6,6 +6,7 @@ import {
   mysqlTable,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
 
@@ -105,7 +106,11 @@ export const swipes = mysqlTable("swipes", {
   userId: int("user_id").notNull(),
   catalogueItemId: int("catalogue_item_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Required for persistSwipe's onDuplicateKeyUpdate to actually dedupe
+  // instead of inserting a fresh row on every re-swipe of the same item.
+  userItemUnique: uniqueIndex("swipes_user_id_catalogue_item_id_unique").on(table.userId, table.catalogueItemId),
+}));
 
 export type Swipe = typeof swipes.$inferSelect;
 export type InsertSwipe = typeof swipes.$inferInsert;
@@ -115,7 +120,11 @@ export const conversations = mysqlTable("conversations", {
   itemId: int("item_id").notNull(),
   buyerUserId: int("buyer_user_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Required for getOrCreateConversation's onDuplicateKeyUpdate to reuse an
+  // existing thread instead of creating a duplicate one per "Message" tap.
+  itemBuyerUnique: uniqueIndex("conversations_item_id_buyer_user_id_unique").on(table.itemId, table.buyerUserId),
+}));
 
 export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = typeof conversations.$inferInsert;
