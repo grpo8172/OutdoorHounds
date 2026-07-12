@@ -3,6 +3,13 @@ import { Image, Text, View, Pressable, Animated, PanResponder } from "react-nati
 import { Profile } from "@/lib/mockData";
 
 const SWIPE_THRESHOLD = 100;
+// Percentage width + aspectRatio, not a size computed from
+// useWindowDimensions() — this app statically prerenders web pages
+// (app.config.ts: web.output "static" in production), and useWindowDimensions
+// resolves differently during prerender (no real window) vs. client hydration,
+// causing a hydration mismatch that broke the layout. Pure CSS-style values
+// don't have that problem since they're identical in both passes.
+const IMAGE_SIZE_PERCENT = "60%";
 
 interface ProfileCardProps {
   profile: Profile;
@@ -99,15 +106,17 @@ export function ProfileCard({
       }}
     >
       {/* Image */}
-      <View style={{ width: "100%", aspectRatio: 1, backgroundColor: profile.cardColor ?? "#e5e7eb", position: "relative", borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: "hidden" }}>
+      <View style={{ width: "100%", backgroundColor: "white", alignItems: "center", paddingVertical: 16, position: "relative", borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: "hidden" }}>
         {profile.images[0] ? (
-          <Image
-            source={{ uri: profile.images[0] }}
-            style={{ width: "100%", height: "100%" }}
-            resizeMode="contain"
-          />
+          <View style={{ width: IMAGE_SIZE_PERCENT, maxWidth: 260, aspectRatio: 1, backgroundColor: profile.cardColor ?? "#e5e7eb", borderRadius: 12, overflow: "hidden" }}>
+            <Image
+              source={{ uri: profile.images[0] }}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="contain"
+            />
+          </View>
         ) : (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: IMAGE_SIZE_PERCENT, maxWidth: 260, aspectRatio: 1, backgroundColor: profile.cardColor ?? "#e5e7eb", borderRadius: 12, alignItems: "center", justifyContent: "center" }}>
             <Text style={{ fontSize: 64 }}>🐾</Text>
           </View>
         )}
