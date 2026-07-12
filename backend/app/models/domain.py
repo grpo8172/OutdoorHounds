@@ -32,6 +32,10 @@ class CatalogueItem(Base):
     # own convention — see mobile/drizzle/schema.ts's catalogueItems.userId
     # comment). Used to flag sample cards on the storefront.
     user_id = Column(Integer, nullable=True)
+    # Which tenant's storefront this listing belongs to (OwnerConfig.id).
+    # Nullable + backfilled to 1 for pre-multi-tenancy rows; mobile-app
+    # submissions always land on tenant 1 today (mobile has no tenant concept).
+    tenant_id = Column(Integer, nullable=True, index=True)
 
 class Enquiry(Base):
     __tablename__ = "web_enquiries"
@@ -42,6 +46,7 @@ class Enquiry(Base):
     status = Column(String(32), default="pending")
     booking_date = Column(String(10), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    tenant_id = Column(Integer, nullable=True, index=True)
 
 class AssistantRule(Base):
     __tablename__ = "web_assistant_rules"
@@ -55,8 +60,13 @@ class AuditEvent(Base):
     event_type = Column(String(64))
     details = Column(Text)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    tenant_id = Column(Integer, nullable=True, index=True)
 
 class OwnerConfig(Base):
+    # Doubles as the tenant table: one row = one admin's isolated site.
+    # id=1 is the original/default tenant (slug/admin_token stay NULL),
+    # resolved whenever no slug/token is supplied — see get_admin() and the
+    # tenant_slug query param on public endpoints in main.py.
     __tablename__ = "owner_config"
     id = Column(Integer, primary_key=True)
     business_name = Column(String(255), default="Outdoor Hounds")
@@ -65,6 +75,11 @@ class OwnerConfig(Base):
     chat_greeting = Column(Text, nullable=True)
     chat_placeholder = Column(String(255), nullable=True)
     chat_disclaimer = Column(Text, nullable=True)
+    # URL-safe, unique per tenant — public storefront lives at /t/<slug>.
+    slug = Column(String(64), nullable=True, unique=True)
+    # Matches a subscriptions.admin_token value (mobile/Drizzle-managed table
+    # in the same physical DB) — not a real FK, cross-migration-system.
+    admin_token = Column(String(64), nullable=True, unique=True)
     # Full mode config — each entry: {key, active, emoji, label}
     mode_config = Column(JSON, default=lambda: [
         {"key": "pet",                 "active": True, "emoji": "🐾", "label": "Adopt / Foster"},

@@ -14,21 +14,22 @@ const TYPE_LABEL = {
 }
 
 export default function ItemDetail() {
-  const { id } = useParams()
+  const { id, slug } = useParams()
+  const homeHref = slug ? `/t/${slug}` : '/'
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
 
   useEffect(() => {
-    getItem(id).then(data => {
+    getItem(id, slug).then(data => {
       setItem(data)
       setLoading(false)
-      if (data) trackEvent('item_viewed', `Item ${data.id}: ${data.name}`)
+      if (data) trackEvent('item_viewed', `Item ${data.id}: ${data.name}`, slug)
     }).catch(() => setLoading(false))
-  }, [id])
+  }, [id, slug])
 
   const handleEnquire = () => {
-    trackEvent('enquiry_intent', `Item ${item.id}: ${item.name}`)
+    trackEvent('enquiry_intent', `Item ${item.id}: ${item.name}`, slug)
     setModalOpen(true)
   }
 
@@ -40,7 +41,7 @@ export default function ItemDetail() {
     return (
       <div style={{ padding: '2rem' }}>
         <p style={{ color: '#c00' }}>Listing not found.</p>
-        <Link to="/" className="btn btn--outline" style={{ marginTop: '1rem', display: 'inline-block' }}>← Back to listings</Link>
+        <Link to={homeHref} className="btn btn--outline" style={{ marginTop: '1rem', display: 'inline-block' }}>← Back to listings</Link>
       </div>
     )
   }
@@ -51,7 +52,7 @@ export default function ItemDetail() {
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '1.5rem' }}>
       {modalOpen && <EnquiryModal item={item} onClose={() => setModalOpen(false)} />}
 
-      <Link to="/" style={{ color: '#7a6a58', fontSize: '0.9rem', textDecoration: 'none' }}>← Back to listings</Link>
+      <Link to={homeHref} style={{ color: '#7a6a58', fontSize: '0.9rem', textDecoration: 'none' }}>← Back to listings</Link>
 
       {item.image_url && (
         <img

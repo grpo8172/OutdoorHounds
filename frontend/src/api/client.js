@@ -35,18 +35,27 @@ export async function verifyAdminToken() {
   }
 }
 
-export async function getItems() {
-  const res = await fetch(`${BASE}/items`);
+// `tenantSlug` is omitted entirely on the default/root site (`/`) so those
+// requests are byte-identical to the pre-multi-tenancy API — no regression
+// risk to the already-shipped mobile app deep link or existing links.
+function tenantParam(tenantSlug) {
+  return tenantSlug ? `?tenant_slug=${encodeURIComponent(tenantSlug)}` : '';
+}
+
+export async function getItems(tenantSlug) {
+  const res = await fetch(`${BASE}/items${tenantParam(tenantSlug)}`);
   return res.json();
 }
 
-export async function getItem(id) {
-  const res = await fetch(`${BASE}/items/${id}`);
+export async function getItem(id, tenantSlug) {
+  const res = await fetch(`${BASE}/items/${id}${tenantParam(tenantSlug)}`);
   if (!res.ok) return null;
   return res.json();
 }
 
 export async function createEnquiry(itemId, message) {
+  // Tenant is derived server-side from the item being enquired about — no
+  // slug needed here.
   const res = await fetch(`${BASE}/enquiries`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -55,8 +64,32 @@ export async function createEnquiry(itemId, message) {
   return res.json();
 }
 
-export async function getConfig() {
-  const res = await fetch(`${BASE}/config`);
+export async function getConfig(tenantSlug) {
+  const res = await fetch(`${BASE}/config${tenantParam(tenantSlug)}`);
+  return res.json();
+}
+
+// Authenticated equivalents — resolve to the logged-in admin's OWN tenant
+// via their token, used on /setup and /admin (which stay slug-less URLs).
+export async function getMyConfig() {
+  const res = await fetch(`${BASE}/admin/config`, { headers: adminHeaders() });
+  if (res.status === 401) throw new Error('UNAUTHORIZED');
+  return res.json();
+}
+
+export async function getMyItems() {
+  const res = await fetch(`${BASE}/admin/items`, { headers: adminHeaders() });
+  if (res.status === 401) throw new Error('UNAUTHORIZED');
+  return res.json();
+}
+
+export async function addListing(data) {
+  const res = await fetch(`${BASE}/admin/items`, {
+    method: 'POST',
+    headers: adminHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (res.status === 401) throw new Error('UNAUTHORIZED');
   return res.json();
 }
 
@@ -83,9 +116,9 @@ export async function uploadConfigPhotos(files) {
   return res.json();
 }
 
-export async function trackEvent(eventType, details = '') {
+export async function trackEvent(eventType, details = '', tenantSlug) {
   try {
-    await fetch(`${BASE}/track`, {
+    await fetch(`${BASE}/track${tenantParam(tenantSlug)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ event_type: eventType, details }),

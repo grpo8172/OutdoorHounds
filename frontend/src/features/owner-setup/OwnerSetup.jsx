@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getConfig, updateConfig, uploadConfigPhotos } from '../../api/client'
+import { getMyConfig, updateConfig, uploadConfigPhotos, getAdminToken } from '../../api/client'
 import AdminLoginGate, { useAdminAuth } from '../admin-auth/AdminLoginGate'
 
 const DEFAULT_MODES = [
@@ -12,7 +12,14 @@ const DEFAULT_MODES = [
   { key: 'petting_zoo_booking', active: true, emoji: '🐑', label: 'Mini Petting Zoo' },
 ]
 
-const CACHE_KEY = 'owner_config_cache'
+// Namespaced by admin token (not a flat key) — otherwise switching between
+// tenants in the same browser (e.g. master password vs. a real admin token)
+// would flash the PREVIOUS tenant's cached business name/config on load,
+// which is the exact cross-tenant-leak bug this whole change fixes, just
+// re-introduced client-side via a shared cache key.
+function cacheKey() {
+  return `owner_config_cache:${getAdminToken() || 'none'}`
+}
 
 function mergeConfig(data) {
   const existing = data.mode_config || []
@@ -25,13 +32,13 @@ function mergeConfig(data) {
 
 function readCache() {
   try {
-    const raw = localStorage.getItem(CACHE_KEY)
+    const raw = localStorage.getItem(cacheKey())
     return raw ? JSON.parse(raw) : null
   } catch { return null }
 }
 
 function writeCache(data) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
+  try { localStorage.setItem(cacheKey(), JSON.stringify(data)) } catch {}
 }
 
 const BRAND_COLORS = [
@@ -46,6 +53,30 @@ const BRAND_COLORS = [
 ]
 
 const MOBILE_APP_URL = import.meta.env.VITE_MOBILE_APP_URL || 'http://localhost:8081'
+
+// Every admin's own isolated site — the link they hand out to their people.
+// `slug` is null for the original/default tenant, which just lives at root.
+function ShareableLink({ slug }) {
+  const [copied, setCopied] = useState(false)
+  if (slug === undefined) return null
+  const url = `${window.location.origin}${slug ? `/t/${slug}` : '/'}`
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {}
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: '#fff7f0', border: '1px solid #fcd9b6', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
+      <span style={{ fontSize: '0.85rem', color: '#92400e', fontWeight: 600, flexShrink: 0 }}>🔗 Your site:</span>
+      <code style={{ flex: 1, minWidth: 160, fontSize: '0.85rem', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{url}</code>
+      <button onClick={copy} style={{ fontSize: '0.8rem', fontWeight: 600, border: '1px solid #e5e7eb', background: copied ? '#16a34a' : '#fff', color: copied ? '#fff' : '#e8843c', borderRadius: 8, padding: '0.35rem 0.75rem', cursor: 'pointer' }}>
+        {copied ? 'Copied!' : 'Copy'}
+      </button>
+    </div>
+  )
+}
 
 export default function OwnerSetup() {
   const { isAdmin, isTryout, checking, onLogin, onTryout } = useAdminAuth()
@@ -73,7 +104,7 @@ function OwnerSetupInner({ isTryout }) {
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
-    getConfig().then(data => {
+    getMyConfig().then(data => {
       const merged = mergeConfig(data)
       setConfig(merged)
       writeCache(merged)
@@ -141,9 +172,11 @@ function OwnerSetupInner({ isTryout }) {
         </div>
       )}
       <h2 style={{ marginBottom: '0.25rem' }}>Owner Setup</h2>
-      <p style={{ color: '#777', marginBottom: '2rem' }}>
+      <p style={{ color: '#777', marginBottom: '1.5rem' }}>
         Customise your site name, categories, and photos. Works for any community — not just pets.
       </p>
+
+      <ShareableLink slug={config.slug} />
 
       {/* Business name */}
       <section style={sectionStyle}>

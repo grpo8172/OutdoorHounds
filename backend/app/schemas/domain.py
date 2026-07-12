@@ -21,6 +21,10 @@ class OwnerConfigResponse(BaseModel):
     mode_config: List[ModeConfig]
     hero_photos: List[str]
     brand_color: Optional[str] = "#e8843c"
+    # Only meaningful to the tenant's own admin (their shareable /t/<slug>
+    # link) — public/unauthenticated /api/config responses omit it via
+    # get_config's own logic, see main.py.
+    slug: Optional[str] = None
 
     class Config:
         from_attributes = True

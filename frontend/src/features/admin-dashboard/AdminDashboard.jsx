@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { getAuditEvents, getPendingItems, approveItem, getEnquiries, decideEnquiry } from '../../api/client'
+import { getAuditEvents, getPendingItems, approveItem, getEnquiries, decideEnquiry, getMyItems, getMyConfig, addListing } from '../../api/client'
 import AdminLoginGate, { useAdminAuth } from '../admin-auth/AdminLoginGate'
 
 const TYPE_LABELS = {
@@ -190,6 +190,103 @@ function LockedButton({ label, style }) {
   )
 }
 
+// Every admin's own isolated site — the link they hand out to their people.
+// `slug` is null for the original/default tenant, which just lives at root.
+function ShareableLink({ slug }) {
+  const [copied, setCopied] = useState(false)
+  if (slug === undefined) return null
+  const url = `${window.location.origin}${slug ? `/t/${slug}` : '/'}`
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {}
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: '#fff7f0', border: '1px solid #fcd9b6', borderRadius: 10, padding: '0.6rem 1rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+      <span style={{ fontSize: '0.85rem', color: '#92400e', fontWeight: 600, flexShrink: 0 }}>🔗 Your site:</span>
+      <code style={{ flex: 1, minWidth: 160, fontSize: '0.85rem', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{url}</code>
+      <button onClick={copy} style={{ fontSize: '0.8rem', fontWeight: 600, border: '1px solid #e5e7eb', background: copied ? '#16a34a' : '#fff', color: copied ? '#fff' : '#e8843c', borderRadius: 8, padding: '0.35rem 0.75rem', cursor: 'pointer' }}>
+        {copied ? 'Copied!' : 'Copy'}
+      </button>
+    </div>
+  )
+}
+
+const EMPTY_LISTING = { item_type: 'pet', name: '', description: '', price: '', image_url: '' }
+
+// Lets a new tenant (whose site starts empty — the mobile app has no
+// concept of which tenant a listing belongs to yet) populate their own
+// storefront directly, without waiting on a customer to propose something.
+function AddListingForm({ onAdded }) {
+  const [form, setForm] = useState(EMPTY_LISTING)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }))
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (!form.name.trim() || !form.description.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      await addListing({
+        item_type: form.item_type,
+        name: form.name.trim(),
+        description: form.description.trim(),
+        price: form.price.trim() || null,
+        image_url: form.image_url.trim() || null,
+      })
+      setForm(EMPTY_LISTING)
+      onAdded()
+    } catch {
+      setError('Could not add the listing. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+      <div>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Category</label>
+        <select value={form.item_type} onChange={set('item_type')} style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem' }}>
+          {Object.entries(TYPE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+        </select>
+      </div>
+      <div>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Title *</label>
+        <input value={form.name} onChange={set('name')} placeholder="e.g. Max — 3yr Golden Retriever"
+          style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+      </div>
+      <div>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Description *</label>
+        <textarea value={form.description} onChange={set('description')} rows={3} placeholder="Tell people about this listing…"
+          style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box', resize: 'vertical' }} />
+      </div>
+      <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Price (optional)</label>
+          <input value={form.price} onChange={set('price')} placeholder="e.g. Free, $25/walk"
+            style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Photo URL (optional)</label>
+          <input value={form.image_url} onChange={set('image_url')} placeholder="https://…"
+            style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+        </div>
+      </div>
+      {error && <p style={{ color: '#dc2626', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
+      <button type="submit" disabled={saving || !form.name.trim() || !form.description.trim()} className="btn"
+        style={{ background: '#e8843c', alignSelf: 'flex-start', opacity: saving ? 0.7 : 1 }}>
+        {saving ? 'Adding…' : 'Add Listing'}
+      </button>
+    </form>
+  )
+}
+
 function AdminDashboardInner({ onLogout, isTryout }) {
   const [tab, setTab] = useState('listings')
   const [pending, setPending] = useState([])
@@ -197,12 +294,14 @@ function AdminDashboardInner({ onLogout, isTryout }) {
   const [enquiries, setEnquiries] = useState([])
   const [events, setEvents] = useState([])
   const [approveTarget, setApproveTarget] = useState(null)
+  const [slug, setSlug] = useState(undefined)
 
   const load = () => {
     getPendingItems().then(setPending).catch(() => setPending([]))
-    fetch('/api/items').then(r => r.json()).then(setPublished).catch(() => setPublished([]))
+    getMyItems().then(setPublished).catch(() => setPublished([]))
     getEnquiries().then(setEnquiries).catch(() => setEnquiries([]))
     getAuditEvents().then(setEvents).catch(() => setEvents([]))
+    getMyConfig().then(c => setSlug(c.slug)).catch(() => {})
   }
 
   useEffect(load, [])
@@ -230,6 +329,7 @@ function AdminDashboardInner({ onLogout, isTryout }) {
 
   const TABS = [
     { id: 'listings', label: `Listings${pending.length ? ` (${pending.length} pending)` : ''}` },
+    { id: 'add', label: '+ Add Listing' },
     { id: 'enquiries', label: `Enquiries${pendingEnquiries.length ? ` (${pendingEnquiries.length})` : ''}` },
     { id: 'calendar', label: 'Calendar' },
     { id: 'activity', label: `Activity${events.length ? ` (${events.length})` : ''}` },
@@ -238,6 +338,7 @@ function AdminDashboardInner({ onLogout, isTryout }) {
   return (
     <div>
       {isTryout && <TryoutBanner />}
+      <ShareableLink slug={slug} />
       {approveTarget && (
         <ApproveModal
           enquiry={approveTarget}
@@ -331,6 +432,20 @@ function AdminDashboardInner({ onLogout, isTryout }) {
               </div>
             )
           }
+        </div>
+      )}
+
+      {/* ── Add Listing tab ── */}
+      {tab === 'add' && (
+        <div>
+          <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+            Adds directly to your storefront — no approval step, since it's coming from you.
+          </p>
+          {isTryout ? (
+            <LockedButton label="Add Listing" />
+          ) : (
+            <AddListingForm onAdded={() => { load(); setTab('listings') }} />
+          )}
         </div>
       )}
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { getItems, getConfig, trackEvent } from '../../api/client'
 import { EnquiryModal } from './EnquiryModal'
 
@@ -30,12 +31,12 @@ function SampleBadge({ item }) {
   return <span className="tag sample">Sample</span>
 }
 
-function sendEnquiry(item, prefix, openModal) {
-  trackEvent('enquiry_intent', `Item ${item.id}: ${item.name} — ${prefix}`)
+function sendEnquiry(item, prefix, openModal, slug) {
+  trackEvent('enquiry_intent', `Item ${item.id}: ${item.name} — ${prefix}`, slug)
   openModal({ ...item, name: `${item.name} — ${prefix}` })
 }
 
-function PettingZooCard({ item, saved, onSave, openModal }) {
+function PettingZooCard({ item, saved, onSave, openModal, slug }) {
   const m = item.listing_meta || {}
   const actions = [
     { label: 'Check availability', prompt: 'Check availability', style: 'btn btn--primary' },
@@ -65,7 +66,7 @@ function PettingZooCard({ item, saved, onSave, openModal }) {
         {m.contact         && <p className="zoo-note"><strong>Contact:</strong> {m.contact}</p>}
         <div className="zoo-actions">
           {actions.map(({ label, prompt, style }) => (
-            <button key={label} className={style} onClick={() => sendEnquiry(item, prompt, openModal)}>{label}</button>
+            <button key={label} className={style} onClick={() => sendEnquiry(item, prompt, openModal, slug)}>{label}</button>
           ))}
           <button className={`btn btn--outline${saved ? ' btn--saved' : ''}`} onClick={onSave}>{saved ? 'Saved ✓' : 'Save for later'}</button>
         </div>
@@ -93,6 +94,7 @@ function StandardCard({ item, onEnquire, typeLabel }) {
 }
 
 export default function Storefront() {
+  const { slug } = useParams()
   const [items, setItems] = useState([])
   const [config, setConfig] = useState(null)
   const [filter, setFilter] = useState('all')
@@ -100,10 +102,10 @@ export default function Storefront() {
   const [enquiryItem, setEnquiryItem] = useState(null)
 
   useEffect(() => {
-    getItems().then(setItems).catch(() => setItems([]))
-    getConfig().then(setConfig).catch(() => setConfig(null))
-    trackEvent('storefront_viewed', '')
-  }, [])
+    getItems(slug).then(setItems).catch(() => setItems([]))
+    getConfig(slug).then(setConfig).catch(() => setConfig(null))
+    trackEvent('storefront_viewed', '', slug)
+  }, [slug])
 
   const typeLabelMap = Object.fromEntries(
     (config?.mode_config ?? []).map(m => [m.key, m.label])
@@ -122,7 +124,7 @@ export default function Storefront() {
   ]
 
   const handleEnquire = (item) => {
-    trackEvent('enquiry_intent', `Item ${item.id}: ${item.name}`)
+    trackEvent('enquiry_intent', `Item ${item.id}: ${item.name}`, slug)
     setEnquiryItem(item)
   }
 
@@ -180,7 +182,7 @@ export default function Storefront() {
       <div className="grid">
         {filtered.map(item =>
           item.item_type === 'petting_zoo_booking' ? (
-            <PettingZooCard key={item.id} item={item} saved={saved.has(item.id)} onSave={() => toggleSave(item.id)} openModal={setEnquiryItem} />
+            <PettingZooCard key={item.id} item={item} saved={saved.has(item.id)} onSave={() => toggleSave(item.id)} openModal={setEnquiryItem} slug={slug} />
           ) : (
             <StandardCard key={item.id} item={item} onEnquire={handleEnquire} typeLabel={typeLabelMap[item.item_type]} />
           )
