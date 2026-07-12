@@ -8,6 +8,8 @@ import {
   hasSubscriptionForTransaction,
   recordVerifiedPayment,
   getAdminTokenForUser,
+  topUpDailyWriteQuota,
+  PAID_DAILY_WRITE_LIMIT,
 } from "./db";
 import { capturePayPalOrder, createPayPalOrder } from "./_core/paypal";
 
@@ -61,6 +63,13 @@ export const subscriptionsRouter = router({
         transactionId,
         "listing",
       );
+
+      // A repeat $10 purchase while already unlocked is a same-day top-up:
+      // grants PAID_DAILY_WRITE_LIMIT more writes for today on top of the
+      // base daily cap (see writeProcedure in _core/trpc.ts). No-op for a
+      // first-time purchase, since a brand-new paid user already starts
+      // today with a fresh full quota.
+      await topUpDailyWriteQuota(ctx.user.id, PAID_DAILY_WRITE_LIMIT);
 
       return { success: true };
     }),

@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { startOAuthLogin } from "@/constants/oauth";
 import { trpc } from "@/lib/trpc";
 import { showAlert } from "@/lib/alert";
+import { isPaywallError, isGuestLimitError, isDailyCapError } from "@/lib/trpc-error";
 
 const SEEKING = [
   { value: "adopt_or_foster",           label: "Adopt or Foster",        emoji: "🐾" },
@@ -66,7 +67,7 @@ function ProfilePreview({ name, bio, seeking }: { name: string; bio: string; see
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function CreateProfileScreen() {
-  const { user, loading: authLoading, devLogin } = useAuth();
+  const { user, loading: authLoading, devLogin, guestLogin } = useAuth();
   const [step, setStep] = useState<Step>("auth");
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
@@ -77,7 +78,20 @@ export default function CreateProfileScreen() {
 
   const updateProfile = trpc.profiles.updateMyProfile.useMutation({
     onSuccess: () => router.replace("/"),
-    onError: (err) => showAlert("Couldn't save profile", err.message),
+    onError: (err) => {
+      if (isDailyCapError(err)) {
+        showAlert("Daily limit reached", "Pay $10 for 40 more today.");
+        router.push("/subscribe");
+        return;
+      }
+      if (isPaywallError(err)) { router.push("/subscribe"); return; }
+      if (isGuestLimitError(err)) {
+        showAlert("Daily limit reached", "Sign in to keep going.");
+        startOAuthLogin();
+        return;
+      }
+      showAlert("Couldn't save profile", err.message);
+    },
   });
 
   function toggleSeeking(val: SeekingValue) {
@@ -90,6 +104,15 @@ export default function CreateProfileScreen() {
       setStep("bio");
     } catch (err) {
       showAlert("Dev login failed", err instanceof Error ? err.message : "Try again");
+    }
+  }
+
+  async function handleGuestLogin() {
+    try {
+      await guestLogin();
+      setStep("bio");
+    } catch (err) {
+      showAlert("Couldn't continue as guest", err instanceof Error ? err.message : "Try again");
     }
   }
 
@@ -140,6 +163,13 @@ export default function CreateProfileScreen() {
               style={{ backgroundColor: "#e8843c", borderRadius: 12, paddingVertical: 16, alignItems: "center" }}
             >
               <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Continue with Google</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleGuestLogin}
+              style={{ borderRadius: 12, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: "#d1d5db" }}
+            >
+              <Text style={{ color: "#6b7280", fontWeight: "500", fontSize: 14 }}>Continue as Guest</Text>
             </Pressable>
 
             {(__DEV__ || process.env.EXPO_PUBLIC_DEV_LOGIN_ENABLED === "true") && (

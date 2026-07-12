@@ -99,6 +99,16 @@ export async function devLogin(): Promise<{ sessionToken: string; user: any }> {
   return { sessionToken: result.sessionToken, user: result.user };
 }
 
+// Production-safe anonymous trial login, tied to a device-persisted id so
+// repeat visits on the same device resolve back to the same guest user.
+export async function guestLogin(deviceId: string): Promise<{ sessionToken: string; user: any }> {
+  const result = await apiCall<{ success: boolean; sessionToken: string; user: any }>(
+    "/api/auth/guest-login",
+    { method: "POST", body: JSON.stringify({ deviceId }) },
+  );
+  return { sessionToken: result.sessionToken, user: result.user };
+}
+
 // Logout
 export async function logout(): Promise<void> {
   await apiCall<void>("/api/auth/logout", {

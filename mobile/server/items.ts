@@ -2,9 +2,8 @@ import { and, eq, inArray, sql, isNotNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { catalogueItems } from "../drizzle/schema";
-import { getDb, getProfileByUserId, hasActiveSubscription } from "./db";
-import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { ENV } from "./_core/env";
+import { getDb, getProfileByUserId } from "./db";
+import { adminProcedure, protectedProcedure, publicProcedure, writeProcedure, router } from "./_core/trpc";
 
 const ITEM_TYPES = [
   "pet",
@@ -142,13 +141,13 @@ export const itemsRouter = router({
     }),
 
   /**
-   * Submission by a paying, onboarded user — appears immediately in the swipe
-   * feed (status: approved). Stores mode-specific detail fields inside
-   * listingMeta JSON. Requires a completed profile and an active unlock
-   * payment; both are re-checked here since the client-side gate on
-   * /create-listing can't be trusted on its own.
+   * Submission by an onboarded user — appears immediately in the swipe feed
+   * (status: approved). Stores mode-specific detail fields inside
+   * listingMeta JSON. writeProcedure gates payment/guest-quota; a completed
+   * profile is re-checked here since the client-side gate on /create-listing
+   * can't be trusted on its own.
    */
-  submit: protectedProcedure
+  submit: writeProcedure
     .input(
       z.object({
         mode: z.enum([
@@ -177,14 +176,6 @@ export const itemsRouter = router({
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Complete your profile before creating a listing.",
-        });
-      }
-
-      const unlocked = !ENV.isProduction || await hasActiveSubscription(ctx.user.id);
-      if (!unlocked) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Unlock Outdoor Hounds to create listings.",
         });
       }
 

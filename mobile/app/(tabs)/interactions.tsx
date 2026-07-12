@@ -5,6 +5,8 @@ import { trpc } from "@/lib/trpc";
 import { router } from "expo-router";
 import { useState } from "react";
 import { startOAuthLogin } from "@/constants/oauth";
+import { showAlert } from "@/lib/alert";
+import { isPaywallError, isGuestLimitError, isDailyCapError } from "@/lib/trpc-error";
 
 type Tab = "saved" | "chats";
 
@@ -43,6 +45,20 @@ export default function InteractionsScreen() {
 
   const startChatMutation = trpc.messages.startConversation.useMutation({
     onSuccess: (conv) => router.push(`/chat/${conv.id}`),
+    onError: (err) => {
+      if (isDailyCapError(err)) {
+        showAlert("Daily limit reached", "Pay $10 for 40 more chats today.");
+        router.push("/subscribe");
+        return;
+      }
+      if (isPaywallError(err)) { router.push("/subscribe"); return; }
+      if (isGuestLimitError(err)) {
+        showAlert("Daily limit reached", "Sign in to keep chatting.");
+        startOAuthLogin();
+        return;
+      }
+      showAlert("Couldn't start chat", err.message || "Please try again.");
+    },
   });
 
   function handleMessage(itemId: number) {

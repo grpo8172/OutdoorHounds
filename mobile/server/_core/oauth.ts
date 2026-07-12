@@ -168,6 +168,34 @@ export function registerOAuthRoutes(app: Express) {
     res.json({ success: true, sessionToken, user: buildUserResponse(user) });
   });
 
+  // Anonymous trial login. Mints a real session for a "guest:<deviceId>"
+  // user so a returning visitor on the same device resolves back to the
+  // same row (and therefore the same daily write-quota counter — see
+  // consumeGuestWriteQuota in ../db). Unlike dev-login, this must work in
+  // production — it's the real "Try it out" flow, not a test bypass.
+  app.post("/api/auth/guest-login", async (req: Request, res: Response) => {
+    const { deviceId } = req.body || {};
+    if (typeof deviceId !== "string" || deviceId.length < 8) {
+      res.status(400).json({ error: "deviceId is required" });
+      return;
+    }
+
+    const openId = `guest:${deviceId}`;
+    const user = await syncUser({
+      openId,
+      name: "Guest",
+      email: null,
+      loginMethod: "guest",
+    });
+
+    const sessionToken = await sdk.createSessionToken(openId, { name: "Guest" });
+
+    const cookieOptions = getSessionCookieOptions(req);
+    res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+
+    res.json({ success: true, sessionToken, user: buildUserResponse(user) });
+  });
+
   // Builds and redirects to the Google OAuth URL. Used by external pages
   // (e.g. the web admin gate) that need to initiate Google sign-in without
   // knowing the client credentials themselves.

@@ -4,6 +4,9 @@ import { useLocalSearchParams, router } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
+import { showAlert } from "@/lib/alert";
+import { startOAuthLogin } from "@/constants/oauth";
+import { isPaywallError, isGuestLimitError, isDailyCapError } from "@/lib/trpc-error";
 
 const SEEKING_LABELS: Record<string, string> = {
   adopt_or_foster: "🐾 Adopt / Foster",
@@ -74,6 +77,20 @@ export default function ChatScreen() {
       setBody("");
       messagesQuery.refetch();
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    },
+    onError: (err) => {
+      if (isDailyCapError(err)) {
+        showAlert("Daily limit reached", "Pay $10 for 40 more messages today.");
+        router.push("/subscribe");
+        return;
+      }
+      if (isPaywallError(err)) { router.push("/subscribe"); return; }
+      if (isGuestLimitError(err)) {
+        showAlert("Daily limit reached", "Sign in to keep messaging.");
+        startOAuthLogin();
+        return;
+      }
+      showAlert("Message failed to send", err.message || "Please try again.");
     },
   });
 

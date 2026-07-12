@@ -19,6 +19,7 @@ import { AppMode } from "@/lib/mockData";
 import { MODES, MODE_FIELDS } from "@/lib/modes";
 import { UNLOCK_PRICE_LABEL } from "@shared/const";
 import { showAlert } from "@/lib/alert";
+import { isPaywallError, isGuestLimitError, isDailyCapError } from "@/lib/trpc-error";
 
 const EMPTY_FORM = {
   mode: "" as AppMode | "",
@@ -90,6 +91,7 @@ function GateScreen({
   onPress,
   devOnPress,
   devError,
+  guestOnPress,
 }: {
   title: string;
   description: string;
@@ -97,6 +99,7 @@ function GateScreen({
   onPress: () => void;
   devOnPress?: () => void;
   devError?: string | null;
+  guestOnPress?: () => void;
 }) {
   return (
     <ScreenContainer className="p-6 items-center justify-center">
@@ -120,6 +123,24 @@ function GateScreen({
             {ctaLabel}
           </Text>
         </Pressable>
+        {guestOnPress && (
+          <Pressable
+            onPress={guestOnPress}
+            style={{
+              borderRadius: 12,
+              paddingVertical: 12,
+              paddingHorizontal: 24,
+              alignItems: 'center',
+              width: '100%',
+              borderWidth: 1,
+              borderColor: '#7a6a58',
+            }}
+          >
+            <Text style={{ color: '#7a6a58', fontWeight: '500', fontSize: 14 }}>
+              Continue as Guest
+            </Text>
+          </Pressable>
+        )}
         {isDevLoginEnabled && devOnPress && (
           <Pressable
             onPress={devOnPress}
@@ -150,7 +171,7 @@ function GateScreen({
 
 export default function CreateListingScreen() {
   const router = useRouter();
-  const { user, isAuthenticated, loading: authLoading, devLogin } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, devLogin, guestLogin } = useAuth();
   const [devLoginError, setDevLoginError] = useState<string | null>(null);
 
   const handleDevLogin = async () => {
@@ -162,6 +183,15 @@ export default function CreateListingScreen() {
     }
   };
 
+  const handleGuestLogin = async () => {
+    setDevLoginError(null);
+    try {
+      await guestLogin();
+    } catch (err) {
+      setDevLoginError(err instanceof Error ? err.message : "Couldn't continue as guest. Please try again.");
+    }
+  };
+
   const profileQuery = trpc.profiles.getMyProfile.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -170,7 +200,9 @@ export default function CreateListingScreen() {
   const subscriptionQuery = trpc.subscriptions.getStatus.useQuery(undefined, {
     enabled: isAuthenticated && hasProfile,
   });
-  const isUnlocked = user?.loginMethod === "dev" || (subscriptionQuery.data?.active ?? false);
+  const isGuest = user?.loginMethod === "guest";
+  const isUnlocked =
+    user?.loginMethod === "dev" || isGuest || (subscriptionQuery.data?.active ?? false);
 
   if (authLoading) {
     return (
@@ -187,6 +219,7 @@ export default function CreateListingScreen() {
         description="You can browse and swipe without an account, but creating a listing needs you to be signed in."
         ctaLabel="Sign in with Google"
         onPress={() => startOAuthLogin()}
+        guestOnPress={handleGuestLogin}
         devOnPress={handleDevLogin}
         devError={devLoginError}
       />
@@ -212,7 +245,7 @@ export default function CreateListingScreen() {
     );
   }
 
-  if (user?.loginMethod !== "dev" && subscriptionQuery.isLoading) {
+  if (user?.loginMethod !== "dev" && !isGuest && subscriptionQuery.isLoading) {
     return (
       <ScreenContainer className="items-center justify-center">
         <ActivityIndicator />
@@ -224,7 +257,7 @@ export default function CreateListingScreen() {
     return (
       <GateScreen
         title="Unlock Outdoor Hounds"
-        description={`A one-time ${UNLOCK_PRICE_LABEL} payment unlocks unlimited listings — no subscription, no renewals.`}
+        description={`A one-time ${UNLOCK_PRICE_LABEL} payment unlocks up to 40 listings a day — no subscription, no renewals.`}
         ctaLabel={`Unlock for ${UNLOCK_PRICE_LABEL}`}
         onPress={() => router.push("/subscribe")}
         devOnPress={handleDevLogin}
@@ -237,6 +270,7 @@ export default function CreateListingScreen() {
 }
 
 function ListingForm() {
+  const router = useRouter();
   const [form, setForm] = useState(EMPTY_FORM);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -248,7 +282,20 @@ function ListingForm() {
 
   const submitMutation = trpc.items.submit.useMutation({
     onSuccess: () => setSubmitted(true),
-    onError: (err) => showAlert("Submission failed", err.message || "Please try again."),
+    onError: (err) => {
+      if (isDailyCapError(err)) {
+        showAlert("Daily limit reached", "Pay $10 for 40 more listings today.");
+        router.push("/subscribe");
+        return;
+      }
+      if (isPaywallError(err)) { router.push("/subscribe"); return; }
+      if (isGuestLimitError(err)) {
+        showAlert("Daily limit reached", "Sign in to keep creating listings.");
+        startOAuthLogin();
+        return;
+      }
+      showAlert("Submission failed", err.message || "Please try again.");
+    },
   });
 
   const selectedMode = form.mode as AppMode | "";

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, writeProcedure, router } from "./_core/trpc";
 import {
   getOrCreateConversation,
   getMessages,
@@ -12,7 +12,7 @@ import {
 } from "./db";
 
 export const messagesRouter = router({
-  saveItem: protectedProcedure
+  saveItem: writeProcedure
     .input(z.object({ itemId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await persistSwipe(ctx.user.id, input.itemId);
@@ -27,7 +27,7 @@ export const messagesRouter = router({
     return getSavedItems(ctx.user.id);
   }),
 
-  startConversation: protectedProcedure
+  startConversation: writeProcedure
     .input(z.object({ itemId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       return getOrCreateConversation(ctx.user.id, input.itemId);
@@ -39,7 +39,7 @@ export const messagesRouter = router({
       return getMessages(input.conversationId);
     }),
 
-  sendMessage: protectedProcedure
+  sendMessage: writeProcedure
     .input(z.object({ conversationId: z.number(), body: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       return createMessage(input.conversationId, ctx.user.id, input.body);

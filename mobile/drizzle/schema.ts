@@ -130,3 +130,18 @@ export const messages = mysqlTable("messages", {
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = typeof messages.$inferInsert;
+
+// Daily write-action counter, shared by every capped tier (guests and
+// base-paid users — admin subscribers are uncapped and never get a row here).
+export const writeUsage = mysqlTable("write_usage", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull().unique(),
+  // "YYYY-MM-DD" (UTC) — the day this counter applies to.
+  usageDate: varchar("usage_date", { length: 10 }).notNull(),
+  count: int("count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type WriteUsage = typeof writeUsage.$inferSelect;
+export type InsertWriteUsage = typeof writeUsage.$inferInsert;

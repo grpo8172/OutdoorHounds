@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, writeProcedure, router } from "./_core/trpc";
 import { getProfileByUserId, updateProfile } from "./db";
 
 const PROFILE_TYPES = [
@@ -28,7 +28,7 @@ export const profilesRouter = router({
     return getProfileByUserId(ctx.user.id);
   }),
 
-  updateMyProfile: protectedProcedure
+  updateMyProfile: writeProcedure
     .input(
       z.object({
         displayName: z.string().min(1).max(255).optional(),

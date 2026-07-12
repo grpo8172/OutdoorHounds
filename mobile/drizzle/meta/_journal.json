@@ -64,6 +64,20 @@
       "when": 1752278400000,
       "tag": "0008_unique_transaction_id",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1783825200000,
+      "tag": "0009_add_guest_usage",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1783830000000,
+      "tag": "0010_rename_guest_usage",
+      "breakpoints": true
     }
   ]
 }

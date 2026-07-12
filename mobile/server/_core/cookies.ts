@@ -11,19 +11,23 @@ function isSecureRequest(req: Request) {
   return protoList.some((proto) => proto.trim().toLowerCase() === "https");
 }
 
-// nginx proxies /api through the same origin as the web app (see nginx.conf),
-// so the session cookie is always first-party — no cross-subdomain domain
-// sharing or SameSite=None needed. That combination also silently breaks
-// behind proxies that don't forward X-Forwarded-Proto (e.g. Cloud Shell's
-// preview tunnel): browsers reject SameSite=None cookies that aren't Secure,
-// and isSecureRequest() can't detect HTTPS without that header.
+// The web app calls the API cross-origin (mobile-web-*.run.app fetching
+// mobile-api-*.run.app — there is no same-origin nginx proxy in front of
+// /api), so the session cookie must be sendable on cross-site fetch/XHR
+// requests. SameSite=Lax blocks that (it only allows top-level navigations),
+// which silently broke every write action for every user: the cookie got
+// set fine but never came back on the next request, so ctx.user was always
+// null. SameSite=None requires Secure=true or browsers reject the cookie
+// outright — Cloud Run's HTTPS-only prod traffic satisfies that, so fall
+// back to Lax only for local/non-HTTPS dev where isSecureRequest() is false.
 export function getSessionCookieOptions(
   req: Request,
 ): Pick<CookieOptions, "httpOnly" | "path" | "sameSite" | "secure"> {
+  const secure = isSecureRequest(req);
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "lax",
-    secure: isSecureRequest(req),
+    sameSite: secure ? "none" : "lax",
+    secure,
   };
 }

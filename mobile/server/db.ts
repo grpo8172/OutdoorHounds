@@ -10,6 +10,7 @@ import {
   swipes,
   conversations,
   messages,
+  writeUsage,
   Conversation,
   Message,
 } from "../drizzle/schema";
@@ -222,6 +223,72 @@ export async function hasActiveAdminSubscription(userId: number): Promise<boolea
     )
     .limit(1);
   return result.length > 0;
+}
+
+export const GUEST_DAILY_WRITE_LIMIT = 3;
+export const PAID_DAILY_WRITE_LIMIT = 40;
+
+// Returns true if the user still has quota left today under the given daily
+// limit (and consumes one unit of it), false once they've hit that limit.
+// Read-then-write, not atomic — acceptable since a given user only ever
+// races against requests from their own device(s), not other users.
+export async function consumeWriteQuota(userId: number, dailyLimit: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const [row] = await db
+    .select()
+    .from(writeUsage)
+    .where(eq(writeUsage.userId, userId))
+    .limit(1);
+
+  if (!row) {
+    await db.insert(writeUsage).values({ userId, usageDate: today, count: 1 });
+    return true;
+  }
+
+  if (row.usageDate !== today) {
+    await db
+      .update(writeUsage)
+      .set({ usageDate: today, count: 1 })
+      .where(eq(writeUsage.userId, userId));
+    return true;
+  }
+
+  if (row.count >= dailyLimit) return false;
+
+  await db
+    .update(writeUsage)
+    .set({ count: row.count + 1 })
+    .where(eq(writeUsage.userId, userId));
+  return true;
+}
+
+// Called after a successful top-up payment (a repeat $10 purchase while
+// already unlocked) to grant PAID_DAILY_WRITE_LIMIT more writes for today.
+// Implemented by rolling today's count back by that amount (floored at 0)
+// rather than tracking a separate "bonus" field — composes naturally with
+// consumeWriteQuota's existing today-vs-stored-date logic, and if the user
+// hasn't written anything yet today there's nothing to roll back, which is
+// correct: they already start today with a fresh PAID_DAILY_WRITE_LIMIT.
+export async function topUpDailyWriteQuota(userId: number, amount: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const [row] = await db
+    .select()
+    .from(writeUsage)
+    .where(eq(writeUsage.userId, userId))
+    .limit(1);
+
+  if (!row || row.usageDate !== today) return;
+
+  await db
+    .update(writeUsage)
+    .set({ count: Math.max(0, row.count - amount) })
+    .where(eq(writeUsage.userId, userId));
 }
 
 export async function getAdminTokenForUser(userId: number): Promise<string | null> {

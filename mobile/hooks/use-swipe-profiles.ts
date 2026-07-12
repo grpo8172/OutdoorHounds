@@ -77,7 +77,14 @@ export interface UseSwipeProfilesReturn {
 export function useSwipeProfiles(mode: AppMode = "adopt_or_foster"): UseSwipeProfilesReturn {
   const { user } = useAuth();
   const { lat, lng, radiusKm, enabled: locationEnabled } = useLocation();
-  const saveItemMutation = trpc.messages.saveItem.useMutation();
+  const saveItemMutation = trpc.messages.saveItem.useMutation({
+    // Swiping is a background action — don't interrupt the swipe flow with
+    // a modal. The listing is still marked saved locally either way; a
+    // failed save (paywall/guest-limit/etc.) just won't persist server-side.
+    onError: (err) => {
+      console.warn("[useSwipeProfiles] saveItem failed:", err.message);
+    },
+  });
 
   const query = trpc.items.listByMode.useQuery(
     {
