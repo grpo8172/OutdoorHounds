@@ -15,3 +15,4 @@ export const ADMIN_UNLOCK_PRICE_LABEL = `$${ADMIN_UNLOCK_PRICE_CENTS / 100}`;
 export const PAYWALL_ERR_MSG = "Unlock Outdoor Hounds to continue (10003)";
 export const GUEST_LIMIT_ERR_MSG = "Daily guest limit reached — sign in to continue (10004)";
 export const DAILY_CAP_ERR_MSG = "Daily limit reached — pay $10 for 40 more today (10005)";
+export const TENANT_NOT_FOUND_ERR_MSG = "Community not found (10006)";

@@ -3,6 +3,7 @@ import { Profile, AppMode, mockProfiles } from "@/lib/mockData";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "./use-auth";
 import { useLocation } from "@/lib/location-context";
+import { useActiveTenant } from "./use-active-tenant";
 
 // Reverse mapping: itemType stored in DB → AppMode used in the client
 const ITEM_TYPE_TO_MODE: Record<string, AppMode> = {
@@ -77,6 +78,7 @@ export interface UseSwipeProfilesReturn {
 export function useSwipeProfiles(mode: AppMode = "adopt_or_foster"): UseSwipeProfilesReturn {
   const { user } = useAuth();
   const { lat, lng, radiusKm, enabled: locationEnabled } = useLocation();
+  const { isNonDefault } = useActiveTenant();
   const saveItemMutation = trpc.messages.saveItem.useMutation({
     // Swiping is a background action — don't interrupt the swipe flow with
     // a modal. The listing is still marked saved locally either way; a
@@ -110,10 +112,13 @@ export function useSwipeProfiles(mode: AppMode = "adopt_or_foster"): UseSwipePro
   );
 
   // While loading: show nothing (DiscoverScreen renders a spinner).
-  // Once resolved (success or error): DB profiles first, then mock profiles as fallback.
+  // Once resolved (success or error): DB profiles first, then mock profiles
+  // as filler — except inside a non-default tenant's community, where the
+  // original app's placeholder pets/services would otherwise bleed into
+  // what's supposed to feel like her own dedicated feed.
   const allProfiles = useMemo(
-    () => (query.isLoading ? [] : [...dbProfiles, ...mockFiltered]),
-    [query.isLoading, dbProfiles, mockFiltered],
+    () => (query.isLoading ? [] : [...dbProfiles, ...(isNonDefault ? [] : mockFiltered)]),
+    [query.isLoading, dbProfiles, mockFiltered, isNonDefault],
   );
 
   const [currentIndex, setCurrentIndex] = useState(0);

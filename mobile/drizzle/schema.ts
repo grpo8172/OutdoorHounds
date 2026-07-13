@@ -50,12 +50,41 @@ export const catalogueItems = mysqlTable("catalogue_items", {
   listingMeta: json("listing_meta"),
   lat: decimal("lat", { precision: 10, scale: 7 }),
   lng: decimal("lng", { precision: 10, scale: 7 }),
+  // Which tenant's storefront this listing belongs to (owner_config.id).
+  // Column already exists physically (nullable, DEFAULT 1) — added directly
+  // against prod, not via a Drizzle migration. See backend/app/models/
+  // domain.py's CatalogueItem.tenant_id for the canonical column def.
+  tenantId: int("tenant_id").default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 
 export type CatalogueItem = typeof catalogueItems.$inferSelect;
 export type InsertCatalogueItem = typeof catalogueItems.$inferInsert;
+
+// Owned/created by the web business site's Python/SQLAlchemy side
+// (backend/app/models/domain.py OwnerConfig). This table already exists
+// physically — this is a minimal, additive, read-mapping-only declaration
+// of the subset of columns the mobile app needs for tenant resolution and
+// branding display. Do NOT run drizzle-kit generate/migrate for this table.
+export const ownerConfig = mysqlTable("owner_config", {
+  id: int("id").autoincrement().primaryKey(),
+  businessName: varchar("business_name", { length: 255 }),
+  siteEmoji: varchar("site_emoji", { length: 16 }),
+  slug: varchar("slug", { length: 64 }),
+  tagline: varchar("tagline", { length: 512 }),
+  chatGreeting: text("chat_greeting"),
+  chatPlaceholder: varchar("chat_placeholder", { length: 255 }),
+  chatDisclaimer: text("chat_disclaimer"),
+  // Each entry: {key, active, emoji, label} — key is a web item_type
+  // (pet/service/event/stall/lost_found/hike/petting_zoo_booking), not a
+  // mobile AppMode. See lib/tenant-modes.ts for the mapping between them.
+  modeConfig: json("mode_config"),
+  heroPhotos: json("hero_photos"),
+  brandColor: varchar("brand_color", { length: 16 }),
+});
+
+export type OwnerConfig = typeof ownerConfig.$inferSelect;
 
 export const profiles = mysqlTable("profiles", {
   id: int("id").autoincrement().primaryKey(),

@@ -11,6 +11,9 @@ import {
   conversations,
   messages,
   writeUsage,
+  catalogueItems,
+  ownerConfig,
+  OwnerConfig,
   Conversation,
   Message,
 } from "../drizzle/schema";
@@ -308,6 +311,31 @@ export async function getAdminTokenForUser(userId: number): Promise<string | nul
   return result.length > 0 ? (result[0].adminToken ?? null) : null;
 }
 
+// ── Tenants ───────────────────────────────────────────────────────────────────
+
+export const DEFAULT_TENANT_ID = 1;
+
+// Resolves an X-Tenant-Slug header value to owner_config.id. Absent slug (the
+// current 100% case) short-circuits to the default tenant with zero query
+// cost. A present-but-unmatched slug returns null — callers must treat that
+// as a hard error (see withTenant in _core/trpc.ts), mirroring the web
+// business site's _resolve_tenant: never silently fall back to the default.
+export async function resolveTenantId(slug: string | null): Promise<number | null> {
+  if (!slug) return DEFAULT_TENANT_ID;
+  const db = await getDb();
+  if (!db) return DEFAULT_TENANT_ID;
+  const rows = await db.select({ id: ownerConfig.id }).from(ownerConfig)
+    .where(eq(ownerConfig.slug, slug)).limit(1);
+  return rows.length > 0 ? rows[0].id : null;
+}
+
+export async function getTenantConfig(tenantId: number): Promise<OwnerConfig | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(ownerConfig).where(eq(ownerConfig.id, tenantId)).limit(1);
+  return rows[0];
+}
+
 // ── Swipes (saved listings) ──────────────────────────────────────────────────
 
 export async function persistSwipe(userId: number, itemId: number): Promise<void> {
@@ -323,14 +351,14 @@ export async function getSavedItemIds(userId: number): Promise<number[]> {
   return rows.map(r => r.id);
 }
 
-export async function getSavedItems(userId: number) {
+export async function getSavedItems(userId: number, tenantId: number) {
   const db = await getDb();
   if (!db) return [];
   const rows = await db.execute(sql`
     SELECT ci.id, ci.item_type, ci.name, ci.description, ci.price, ci.image_url, ci.listing_meta
     FROM swipes s
     JOIN catalogue_items ci ON ci.id = s.catalogue_item_id
-    WHERE s.user_id = ${userId}
+    WHERE s.user_id = ${userId} AND ci.tenant_id = ${tenantId}
     ORDER BY s.created_at DESC
   `) as any;
   const data: any[] = Array.isArray(rows[0]) ? rows[0] : rows;
@@ -373,20 +401,29 @@ export async function createMessage(conversationId: number, senderId: number, bo
   return rows[0];
 }
 
-export async function getMyConversations(userId: number): Promise<Array<Conversation & { lastMessage: string | null; itemName: string | null; buyerProfile: Profile | null }>> {
+export async function getMyConversations(userId: number, tenantId: number): Promise<Array<Conversation & { lastMessage: string | null; itemName: string | null; buyerProfile: Profile | null }>> {
   const db = await getDb();
   if (!db) return [];
-  const rows = await db.select().from(conversations).where(eq(conversations.buyerUserId, userId)).orderBy(desc(conversations.createdAt));
+  const rows = await db
+    .select({
+      id: conversations.id,
+      itemId: conversations.itemId,
+      buyerUserId: conversations.buyerUserId,
+      createdAt: conversations.createdAt,
+      itemName: catalogueItems.name,
+    })
+    .from(conversations)
+    .innerJoin(catalogueItems, eq(catalogueItems.id, conversations.itemId))
+    .where(and(eq(conversations.buyerUserId, userId), eq(catalogueItems.tenantId, tenantId)))
+    .orderBy(desc(conversations.createdAt));
   if (rows.length === 0) return [];
 
   const enriched = await Promise.all(rows.map(async (conv) => {
     const lastMsgs = await db!.select({ body: messages.body }).from(messages)
       .where(eq(messages.conversationId, conv.id)).orderBy(desc(messages.createdAt)).limit(1);
-    const itemRows = await db!.execute(sql`SELECT name FROM catalogue_items WHERE id = ${conv.itemId} LIMIT 1`) as any;
-    const itemName = itemRows?.[0]?.[0]?.name ?? null;
     const buyerProfiles = await db!.select().from(profiles).where(eq(profiles.userId, conv.buyerUserId)).limit(1);
     const buyerProfile = buyerProfiles[0] ?? null;
-    return { ...conv, lastMessage: lastMsgs[0]?.body ?? null, itemName, buyerProfile };
+    return { ...conv, lastMessage: lastMsgs[0]?.body ?? null, buyerProfile };
   }));
   return enriched;
 }

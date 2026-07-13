@@ -1,4 +1,4 @@
-import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG, PAYWALL_ERR_MSG, GUEST_LIMIT_ERR_MSG, DAILY_CAP_ERR_MSG } from "../../shared/const.js";
+import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG, PAYWALL_ERR_MSG, GUEST_LIMIT_ERR_MSG, DAILY_CAP_ERR_MSG, TENANT_NOT_FOUND_ERR_MSG } from "../../shared/const.js";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
@@ -7,6 +7,7 @@ import {
   hasActiveSubscription,
   hasActiveAdminSubscription,
   consumeWriteQuota,
+  resolveTenantId,
   GUEST_DAILY_WRITE_LIMIT,
   PAID_DAILY_WRITE_LIMIT,
 } from "../db";
@@ -99,3 +100,37 @@ export const adminProcedure = t.procedure.use(
     });
   }),
 );
+
+// Resolves ctx.tenantSlug (raw, unresolved) to a concrete tenantId. Absent
+// slug ⇒ the default tenant, zero extra query. A present-but-unmatched slug
+// is a hard error, never a silent fallback — mirrors the web business
+// site's _resolve_tenant semantics exactly.
+//
+// Applied via an inline `.use(async ({ ctx, next }) => ...)` on each base
+// procedure below (rather than a single shared `t.middleware(...)` object)
+// so TypeScript infers `ctx` from that specific builder's already-narrowed
+// context — a standalone middleware typed against the generic TrpcContext
+// would otherwise widen `ctx.user` back to `User | null` on
+// protectedProcedure/writeProcedure, undoing requireUser's narrowing.
+async function resolveTenantOrThrow(tenantSlug: string | null): Promise<number> {
+  const tenantId = await resolveTenantId(tenantSlug);
+  if (tenantId == null) {
+    throw new TRPCError({ code: "NOT_FOUND", message: TENANT_NOT_FOUND_ERR_MSG });
+  }
+  return tenantId;
+}
+
+export const publicTenantProcedure = publicProcedure.use(async ({ ctx, next }) => {
+  const tenantId = await resolveTenantOrThrow(ctx.tenantSlug);
+  return next({ ctx: { ...ctx, tenantId } });
+});
+
+export const writeTenantProcedure = writeProcedure.use(async ({ ctx, next }) => {
+  const tenantId = await resolveTenantOrThrow(ctx.tenantSlug);
+  return next({ ctx: { ...ctx, tenantId } });
+});
+
+export const protectedTenantProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  const tenantId = await resolveTenantOrThrow(ctx.tenantSlug);
+  return next({ ctx: { ...ctx, tenantId } });
+});

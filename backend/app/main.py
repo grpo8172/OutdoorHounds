@@ -31,6 +31,16 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 WEB_UPLOADS_DIR = "/app/web-uploads"
 os.makedirs(WEB_UPLOADS_DIR, exist_ok=True)
 
+# Uploaded photos (hero photos, listing photos) go to GCS rather than local
+# disk — Cloud Run's local filesystem is wiped on every redeploy and isn't
+# shared across instances, so anything saved there would 404 intermittently
+# and vanish on the next deploy.
+GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME", "")
+_gcs_bucket = None
+if GCS_BUCKET_NAME:
+    from google.cloud import storage as gcs_storage
+    _gcs_bucket = gcs_storage.Client().bucket(GCS_BUCKET_NAME)
+
 DEFAULT_MODE_CONFIG = [
     {"key": "pet",                 "active": True, "emoji": "🐾", "label": "Adopt / Foster"},
     {"key": "service",             "active": True, "emoji": "🦮", "label": "Pet Services"},
@@ -369,10 +379,15 @@ async def upload_config_photo(files: List[UploadFile] = File(...), _=Depends(get
     for file in files:
         ext = os.path.splitext(file.filename or "")[1] or ".jpg"
         filename = uuid.uuid4().hex[:16] + ext
-        dest = os.path.join(WEB_UPLOADS_DIR, filename)
-        with open(dest, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-        urls.append(f"/api/photos/{filename}")
+        if _gcs_bucket is not None:
+            blob = _gcs_bucket.blob(filename)
+            blob.upload_from_file(file.file, content_type=file.content_type)
+            urls.append(blob.public_url)
+        else:
+            dest = os.path.join(WEB_UPLOADS_DIR, filename)
+            with open(dest, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+            urls.append(f"/api/photos/{filename}")
     return {"urls": urls}
 
 

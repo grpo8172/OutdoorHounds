@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure, writeProcedure, router } from "./_core/trpc";
+import { protectedProcedure, protectedTenantProcedure, writeProcedure, router } from "./_core/trpc";
 import {
   getOrCreateConversation,
   getMessages,
@@ -23,8 +23,8 @@ export const messagesRouter = router({
     return getSavedItemIds(ctx.user.id);
   }),
 
-  getSavedItems: protectedProcedure.query(async ({ ctx }) => {
-    return getSavedItems(ctx.user.id);
+  getSavedItems: protectedTenantProcedure.query(async ({ ctx }) => {
+    return getSavedItems(ctx.user.id, ctx.tenantId);
   }),
 
   startConversation: writeProcedure
@@ -45,14 +45,14 @@ export const messagesRouter = router({
       return createMessage(input.conversationId, ctx.user.id, input.body);
     }),
 
-  getMyConversations: protectedProcedure.query(async ({ ctx }) => {
-    return getMyConversations(ctx.user.id);
+  getMyConversations: protectedTenantProcedure.query(async ({ ctx }) => {
+    return getMyConversations(ctx.user.id, ctx.tenantId);
   }),
 
-  getConversationProfile: protectedProcedure
+  getConversationProfile: protectedTenantProcedure
     .input(z.object({ conversationId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const convs = await getMyConversations(ctx.user.id);
+      const convs = await getMyConversations(ctx.user.id, ctx.tenantId);
       const conv = convs.find(c => c.id === input.conversationId);
       if (!conv) return null;
       return conv.buyerProfile ?? null;

@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { catalogueItems } from "../drizzle/schema";
 import { getDb, getProfileByUserId } from "./db";
-import { adminProcedure, protectedProcedure, publicProcedure, writeProcedure, router } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, publicTenantProcedure, writeProcedure, writeTenantProcedure, router } from "./_core/trpc";
 
 const ITEM_TYPES = [
   "pet",
@@ -74,7 +74,7 @@ export const itemsRouter = router({
   }),
 
   /** Approved listings filtered to a specific app mode via the itemType mapping. */
-  listByMode: publicProcedure
+  listByMode: publicTenantProcedure
     .input(
       z.object({
         mode: z.enum([
@@ -89,7 +89,7 @@ export const itemsRouter = router({
         radiusKm: z.number().optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return [];
       const types = LEGACY_ITEM_TYPES[input.mode] ?? [MODE_TO_ITEM_TYPE[input.mode]];
@@ -97,6 +97,7 @@ export const itemsRouter = router({
       const conditions = [
         eq(catalogueItems.status, "approved"),
         inArray(catalogueItems.itemType, types),
+        eq(catalogueItems.tenantId, ctx.tenantId),
       ];
 
       if (input.lat != null && input.lng != null && input.radiusKm != null) {
@@ -147,7 +148,7 @@ export const itemsRouter = router({
    * profile is re-checked here since the client-side gate on /create-listing
    * can't be trusted on its own.
    */
-  submit: writeProcedure
+  submit: writeTenantProcedure
     .input(
       z.object({
         mode: z.enum([
@@ -190,6 +191,7 @@ export const itemsRouter = router({
       await db.insert(catalogueItems).values({
         ...rest,
         userId: ctx.user.id,
+        tenantId: ctx.tenantId,
         itemType: MODE_TO_ITEM_TYPE[mode],
         imageUrl: photos[0] || undefined,
         lat: coords?.lat?.toString() ?? null,

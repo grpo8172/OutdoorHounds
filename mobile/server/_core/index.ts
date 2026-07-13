@@ -58,7 +58,7 @@ async function startServer() {
     );
     res.header(
       "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Tenant-Slug",
     );
     res.header("Access-Control-Allow-Credentials", "true");
 

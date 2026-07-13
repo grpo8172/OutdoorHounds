@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { getAuditEvents, getPendingItems, approveItem, getEnquiries, decideEnquiry, getMyItems, getMyConfig, addListing } from '../../api/client'
+import { getAuditEvents, getPendingItems, approveItem, getEnquiries, decideEnquiry, getMyItems, getMyConfig, addListing, uploadConfigPhotos } from '../../api/client'
 import AdminLoginGate, { useAdminAuth } from '../admin-auth/AdminLoginGate'
 
 const TYPE_LABELS = {
@@ -222,9 +222,25 @@ const EMPTY_LISTING = { item_type: 'pet', name: '', description: '', price: '', 
 function AddListingForm({ onAdded }) {
   const [form, setForm] = useState(EMPTY_LISTING)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
 
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }))
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setError(null)
+    try {
+      const { urls } = await uploadConfigPhotos([file])
+      if (urls?.[0]) setForm(f => ({ ...f, image_url: urls[0] }))
+    } catch {
+      setError('Could not upload the photo. Please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const submit = async (e) => {
     e.preventDefault()
@@ -266,17 +282,32 @@ function AddListingForm({ onAdded }) {
         <textarea value={form.description} onChange={set('description')} rows={3} placeholder="Tell people about this listing…"
           style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box', resize: 'vertical' }} />
       </div>
-      <div style={{ display: 'flex', gap: '0.75rem' }}>
-        <div style={{ flex: 1 }}>
-          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Price (optional)</label>
-          <input value={form.price} onChange={set('price')} placeholder="e.g. Free, $25/walk"
-            style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box' }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Photo URL (optional)</label>
-          <input value={form.image_url} onChange={set('image_url')} placeholder="https://…"
-            style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box' }} />
-        </div>
+      <div>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Price (optional)</label>
+        <input value={form.price} onChange={set('price')} placeholder="e.g. Free, $25/walk"
+          style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+      </div>
+
+      <div>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Photo (optional)</label>
+        {form.image_url && (
+          <div style={{ position: 'relative', display: 'inline-block', marginBottom: '0.6rem' }}>
+            <img src={form.image_url} alt="" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid #ddd' }} />
+            <button type="button" onClick={() => setForm(f => ({ ...f, image_url: '' }))}
+              style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: '20px', textAlign: 'center' }}>✕</button>
+          </div>
+        )}
+        {!form.image_url && (
+          <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, border: '2px dashed #ddd', borderRadius: 12, padding: '1rem', cursor: uploading ? 'default' : 'pointer', color: '#aaa', marginBottom: '0.6rem' }}>
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} disabled={uploading} />
+            {uploading ? <span>Uploading…</span> : <>
+              <span style={{ fontSize: 22 }}>📸</span>
+              <span style={{ color: '#e8843c', fontWeight: 600, fontSize: '0.85rem' }}>Upload a photo</span>
+            </>}
+          </label>
+        )}
+        <input value={form.image_url} onChange={set('image_url')} placeholder="…or paste an image URL"
+          style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box' }} />
       </div>
       {error && <p style={{ color: '#dc2626', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
       <button type="submit" disabled={saving || !form.name.trim() || !form.description.trim()} className="btn"

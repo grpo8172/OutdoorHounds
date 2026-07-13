@@ -1,27 +1,26 @@
 import { Image, ScrollView, Text, View, Pressable, Linking } from "react-native";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { ScreenContainer } from "@/components/screen-container";
-import { MODES } from "@/lib/modes";
 import { useAuth } from "@/hooks/use-auth";
+import { useActiveTenant } from "@/hooks/use-active-tenant";
+import { mergeTenantModes } from "@/lib/tenant-modes";
 
 const WEB_BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:8000";
+const DEFAULT_BRAND_COLOR = "#e8843c";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const [siteName, setSiteName] = useState("Outdoor Hounds");
-  const [siteEmoji, setSiteEmoji] = useState("🐾");
+  const {
+    isNonDefault, businessName, siteEmoji: tenantEmoji, slug,
+    brandColor, heroPhoto, tagline, modeConfig, leave,
+  } = useActiveTenant();
 
-  useEffect(() => {
-    fetch(`${WEB_BASE_URL}/api/config`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.business_name) setSiteName(d.business_name);
-        if (d.site_emoji) setSiteEmoji(d.site_emoji);
-      })
-      .catch(() => {});
-  }, []);
+  const siteName = businessName ?? "Outdoor Hounds";
+  const siteEmoji = tenantEmoji ?? "🐾";
+  const brand = brandColor ?? DEFAULT_BRAND_COLOR;
+  const modes = useMemo(() => mergeTenantModes(modeConfig), [modeConfig]);
 
   return (
     <ScreenContainer>
@@ -30,11 +29,51 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={{ gap: 2, paddingTop: 4, marginBottom: 4 }}>
-          <Text className="text-3xl font-bold text-foreground">{siteEmoji} {siteName}</Text>
-          <Text className="text-sm text-muted">What are you looking for today?</Text>
+          {heroPhoto && (
+            <View style={{ height: 140, borderRadius: 16, overflow: "hidden", marginBottom: 12 }}>
+              <Image
+                source={{ uri: heroPhoto }}
+                onError={() => {}}
+                style={{ position: "absolute", width: "100%", height: "100%" }}
+                resizeMode="cover"
+              />
+              <View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.45)" }} />
+              <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 16 }}>
+                <Text style={{ fontSize: 24, fontWeight: "700", color: "#fff" }}>{siteEmoji} {siteName}</Text>
+                <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
+                  {tagline ?? "What are you looking for today?"}
+                </Text>
+              </View>
+            </View>
+          )}
+          {!heroPhoto && (
+            <>
+              <Text className="text-3xl font-bold text-foreground">{siteEmoji} {siteName}</Text>
+              <Text className="text-sm text-muted">{tagline ?? "What are you looking for today?"}</Text>
+            </>
+          )}
         </View>
 
-        {MODES.map((mode) => (
+        {isNonDefault && (
+          <View
+            style={{
+              flexDirection: "row", alignItems: "center", gap: 8,
+              borderRadius: 999, backgroundColor: "#fff7f0",
+              paddingHorizontal: 14, paddingVertical: 8, alignSelf: "flex-start",
+            }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: "600", color: "#92400e" }}>
+              {tenantEmoji ?? "🏘️"} Browsing {businessName ?? "this community"}
+            </Text>
+            <Pressable onPress={leave} hitSlop={8} style={{ borderLeftWidth: 1, borderLeftColor: "#fcd9a8", paddingLeft: 8 }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: "#92400e", textDecorationLine: "underline" }}>
+                Leave
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        {modes.map((mode) => (
           <Pressable
             key={mode.id}
             onPress={() => router.push(`/discover/${mode.id}`)}
@@ -82,28 +121,28 @@ export default function HomeScreen() {
             onPress={() => router.push("/create-profile")}
             style={{
               width: "100%", borderRadius: 16, borderWidth: 1.5,
-              borderColor: "#e8843c", paddingVertical: 14, paddingHorizontal: 20,
+              borderColor: brand, paddingVertical: 14, paddingHorizontal: 20,
               flexDirection: "row", alignItems: "center", gap: 14,
             }}
           >
             <Text style={{ fontSize: 24 }}>👤</Text>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: "700", fontSize: 15, color: "#e8843c" }}>Create a profile</Text>
+              <Text style={{ fontWeight: "700", fontSize: 15, color: brand }}>Create a profile</Text>
               <Text style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
                 Save listings · chat with listers · arrange payment privately
               </Text>
             </View>
-            <Text style={{ color: "#e8843c", fontSize: 16 }}>→</Text>
+            <Text style={{ color: brand, fontSize: 16 }}>→</Text>
           </Pressable>
         )}
 
         {/* Website CTA */}
         <Pressable
-          onPress={() => Linking.openURL(WEB_BASE_URL)}
+          onPress={() => Linking.openURL(isNonDefault && slug ? `${WEB_BASE_URL}/t/${slug}` : WEB_BASE_URL)}
           style={{
             width: "100%",
             borderRadius: 16,
-            backgroundColor: "#e8843c",
+            backgroundColor: brand,
             paddingVertical: 16,
             paddingHorizontal: 20,
             flexDirection: "row",

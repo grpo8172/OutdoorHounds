@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { showAlert } from "@/lib/alert";
 import { startOAuthLogin } from "@/constants/oauth";
 import { isPaywallError, isGuestLimitError, isDailyCapError } from "@/lib/trpc-error";
+import { useActiveTenant } from "@/hooks/use-active-tenant";
 
 const SEEKING_LABELS: Record<string, string> = {
   adopt_or_foster: "🐾 Adopt / Foster",
@@ -59,6 +60,7 @@ export default function ChatScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
   const convId = parseInt(conversationId, 10);
   const { user } = useAuth();
+  const { chatGreeting, chatPlaceholder, chatDisclaimer } = useActiveTenant();
   const [body, setBody] = useState("");
   const scrollRef = useRef<ScrollView>(null);
 
@@ -138,7 +140,7 @@ export default function ChatScreen() {
               <View style={{ alignItems: "center", paddingTop: 32, gap: 8 }}>
                 <Text style={{ fontSize: 28 }}>👋</Text>
                 <Text style={{ color: "#9ca3af", textAlign: "center", fontSize: 14 }}>
-                  Say hello! Negotiate pricing,{"\n"}share contact details, and arrange payment here.
+                  {chatGreeting ?? "Say hello! Negotiate pricing,\nshare contact details, and arrange payment here."}
                 </Text>
                 <Text style={{ color: "#d1d5db", fontSize: 12, textAlign: "center", marginTop: 4 }}>
                   This is a private conversation.
@@ -172,12 +174,19 @@ export default function ChatScreen() {
           </View>
         </ScrollView>
 
+        {/* Disclaimer */}
+        {chatDisclaimer && (
+          <Text style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", paddingHorizontal: 16, paddingTop: 6 }}>
+            {chatDisclaimer}
+          </Text>
+        )}
+
         {/* Input bar */}
         <View style={{ flexDirection: "row", alignItems: "flex-end", padding: 12, gap: 8, borderTopWidth: 1, borderTopColor: "#e5e7eb", backgroundColor: "#fff" }}>
           <TextInput
             value={body}
             onChangeText={setBody}
-            placeholder="Message…"
+            placeholder={chatPlaceholder ?? "Message…"}
             multiline
             style={{ flex: 1, borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, maxHeight: 100, backgroundColor: "#f9fafb" }}
             onSubmitEditing={send}

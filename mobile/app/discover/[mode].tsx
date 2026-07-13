@@ -1,15 +1,24 @@
 import { ScrollView, Text, View, Pressable, RefreshControl, ActivityIndicator, StyleSheet } from "react-native";
-import { useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useLocalSearchParams, router } from "expo-router";
+import { useMemo, useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { ProfileCard } from "@/components/profile-card";
 import { useSwipeProfiles } from "@/hooks/use-swipe-profiles";
+import { useActiveTenant } from "@/hooks/use-active-tenant";
+import { mergeTenantModes } from "@/lib/tenant-modes";
 import { AppMode } from "@/lib/mockData";
 import { MODES } from "@/lib/modes";
 
+const DEFAULT_BRAND_COLOR = "#e8843c";
+
 export default function DiscoverScreen() {
   const { mode: modeParam } = useLocalSearchParams<{ mode: string }>();
-  const modeConfig = MODES.find((m) => m.id === modeParam);
+  const { modeConfig: tenantModeConfig, brandColor } = useActiveTenant();
+  const brand = brandColor ?? DEFAULT_BRAND_COLOR;
+
+  const modeExists = MODES.some((m) => m.id === modeParam);
+  const modes = useMemo(() => mergeTenantModes(tenantModeConfig), [tenantModeConfig]);
+  const modeConfig = modes.find((m) => m.id === modeParam);
 
   const {
     currentProfile,
@@ -24,10 +33,35 @@ export default function DiscoverScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  if (!modeConfig) {
+  if (!modeExists) {
     return (
       <ScreenContainer className="p-6 items-center justify-center">
         <Text className="text-lg text-foreground">Unknown category</Text>
+      </ScreenContainer>
+    );
+  }
+
+  // Exists generally, but this community has turned it off — distinct from
+  // "unknown category" above, since this is a valid link that just doesn't
+  // apply here right now (e.g. a stale deep link to a category the admin
+  // has since disabled).
+  if (!modeConfig) {
+    return (
+      <ScreenContainer className="p-6 items-center justify-center">
+        <View className="items-center gap-4">
+          <Text style={{ fontSize: 40 }}>🚫</Text>
+          <Text className="text-lg font-bold text-foreground text-center">Not available here</Text>
+          <Text className="text-sm text-muted text-center">
+            This category isn't offered by this community.
+          </Text>
+          <Pressable
+            onPress={() => router.back()}
+            className="rounded-lg px-6 py-3 mt-2 active:opacity-80"
+            style={{ backgroundColor: brand }}
+          >
+            <Text className="font-semibold" style={{ color: "#fff" }}>Go Back</Text>
+          </Pressable>
+        </View>
       </ScreenContainer>
     );
   }
@@ -63,7 +97,7 @@ export default function DiscoverScreen() {
           <Pressable
             onPress={reset}
             className="rounded-lg px-6 py-3 mt-2 active:opacity-80"
-            style={{ backgroundColor: "#e8843c" }}
+            style={{ backgroundColor: brand }}
           >
             <Text className="font-semibold" style={{ color: "#a8d4b8" }}>Start Over</Text>
           </Pressable>
