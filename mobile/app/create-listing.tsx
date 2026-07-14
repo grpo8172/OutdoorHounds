@@ -284,7 +284,7 @@ function ListingForm() {
     onSuccess: () => setSubmitted(true),
     onError: (err) => {
       if (isDailyCapError(err)) {
-        showAlert("Daily limit reached", "Pay $10 for 40 more listings today.");
+        showAlert("Daily limit reached", `Pay ${UNLOCK_PRICE_LABEL} for 40 more listings today.`);
         router.push("/subscribe");
         return;
       }

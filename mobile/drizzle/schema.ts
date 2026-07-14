@@ -116,7 +116,7 @@ export const subscriptions = mysqlTable("subscriptions", {
   status: mysqlEnum("status", ["active", "refunded"])
     .default("active")
     .notNull(),
-  amountCents: int("amount_cents").notNull().default(1000),
+  amountCents: int("amount_cents").notNull().default(100),
   currency: varchar("currency", { length: 8 }).notNull().default("USD"),
   // PayPal capture ID returned by the Orders API capture call. Unique per
   // payment — used to guard against double-recording the same capture.

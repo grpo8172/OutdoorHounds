@@ -173,7 +173,7 @@ function TryoutBanner() {
       </span>
       <a href={`${MOBILE_APP_URL}/admin-subscribe`} target="_blank" rel="noreferrer"
         style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e8843c', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-        Unlock for $30 →
+        Unlock for $5 →
       </a>
     </div>
   )
@@ -182,7 +182,7 @@ function TryoutBanner() {
 function LockedButton({ label, style }) {
   return (
     <a href={`${MOBILE_APP_URL}/admin-subscribe`} target="_blank" rel="noreferrer"
-      title="Pay $30 to unlock admin actions"
+      title="Pay $5 to unlock admin actions"
       style={{ display: 'inline-block', opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'auto', textDecoration: 'none', ...style }}
       onClick={e => { e.preventDefault(); window.open(`${MOBILE_APP_URL}/admin-subscribe`, '_blank') }}>
       <span className="btn" style={{ background: '#9ca3af', pointerEvents: 'none' }}>🔒 {label}</span>

@@ -111,7 +111,7 @@ export default function AdminLoginGate({ onLogin, onTryout }) {
           </button>
         )}
         <p style={{ color: '#888', fontSize: '0.82rem', margin: 0 }}>
-          Admin access costs an extra $30 on top of your listing subscription.
+          Admin access costs an extra $5 on top of your listing subscription.
         </p>
         <a
           href={`${MOBILE_APP_URL}/admin-subscribe`}
@@ -119,7 +119,7 @@ export default function AdminLoginGate({ onLogin, onTryout }) {
           rel="noreferrer"
           style={{ display: 'inline-block', backgroundColor: '#f9f5f0', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.6rem 1.2rem', fontSize: '0.9rem', color: '#555', textDecoration: 'none', textAlign: 'center' }}
         >
-          Get admin access — $30
+          Get admin access — $5
         </a>
       </div>
     </div>

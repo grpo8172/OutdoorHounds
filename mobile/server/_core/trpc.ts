@@ -39,11 +39,11 @@ export const protectedProcedure = t.procedure.use(requireUser);
 // Gate for any write action (create listing, send message, edit profile,
 // etc.), tiered to keep any one account from hammering the API:
 //   - guest (no login):        GUEST_DAILY_WRITE_LIMIT/day, then must sign in
-//   - $10 base unlock:         PAID_DAILY_WRITE_LIMIT/day, then another $10
+//   - $1 base unlock:          PAID_DAILY_WRITE_LIMIT/day, then another $1
 //                               payment tops up +PAID_DAILY_WRITE_LIMIT for
 //                               the rest of the day (see topUpDailyWriteQuota,
 //                               wired into subscriptions.captureOrder)
-//   - $30 admin unlock:        uncapped — a trusted, elevated tier
+//   - $5 admin unlock:         uncapped — a trusted, elevated tier
 // Payment endpoints themselves (subscriptions router) must NOT use this —
 // you can't require having already paid in order to pay.
 export const writeProcedure = t.procedure.use(

@@ -268,7 +268,7 @@ export async function consumeWriteQuota(userId: number, dailyLimit: number): Pro
   return true;
 }
 
-// Called after a successful top-up payment (a repeat $10 purchase while
+// Called after a successful top-up payment (a repeat $1 purchase while
 // already unlocked) to grant PAID_DAILY_WRITE_LIMIT more writes for today.
 // Implemented by rolling today's count back by that amount (floored at 0)
 // rather than tracking a separate "bonus" field — composes naturally with

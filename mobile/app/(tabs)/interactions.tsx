@@ -7,6 +7,7 @@ import { useState } from "react";
 import { startOAuthLogin } from "@/constants/oauth";
 import { showAlert } from "@/lib/alert";
 import { isPaywallError, isGuestLimitError, isDailyCapError } from "@/lib/trpc-error";
+import { UNLOCK_PRICE_LABEL } from "@shared/const";
 
 type Tab = "saved" | "chats";
 
@@ -47,7 +48,7 @@ export default function InteractionsScreen() {
     onSuccess: (conv) => router.push(`/chat/${conv.id}`),
     onError: (err) => {
       if (isDailyCapError(err)) {
-        showAlert("Daily limit reached", "Pay $10 for 40 more chats today.");
+        showAlert("Daily limit reached", `Pay ${UNLOCK_PRICE_LABEL} for 40 more chats today.`);
         router.push("/subscribe");
         return;
       }

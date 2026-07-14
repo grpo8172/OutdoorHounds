@@ -8,6 +8,7 @@ import { showAlert } from "@/lib/alert";
 import { startOAuthLogin } from "@/constants/oauth";
 import { isPaywallError, isGuestLimitError, isDailyCapError } from "@/lib/trpc-error";
 import { useActiveTenant } from "@/hooks/use-active-tenant";
+import { UNLOCK_PRICE_LABEL } from "@shared/const";
 
 const SEEKING_LABELS: Record<string, string> = {
   adopt_or_foster: "🐾 Adopt / Foster",
@@ -82,7 +83,7 @@ export default function ChatScreen() {
     },
     onError: (err) => {
       if (isDailyCapError(err)) {
-        showAlert("Daily limit reached", "Pay $10 for 40 more messages today.");
+        showAlert("Daily limit reached", `Pay ${UNLOCK_PRICE_LABEL} for 40 more messages today.`);
         router.push("/subscribe");
         return;
       }

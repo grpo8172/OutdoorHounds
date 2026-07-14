@@ -183,7 +183,7 @@ function OwnerSetupInner({ isTryout }) {
           </span>
           <a href={`${MOBILE_APP_URL}/admin-subscribe`} target="_blank" rel="noreferrer"
             style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e8843c', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-            Unlock for $30 →
+            Unlock for $5 →
           </a>
         </div>
       )}
@@ -407,7 +407,7 @@ function OwnerSetupInner({ isTryout }) {
         {isTryout ? (
           <a href={`${MOBILE_APP_URL}/admin-subscribe`} target="_blank" rel="noreferrer"
             style={{ textDecoration: 'none' }}
-            title="Pay $30 to unlock saving">
+            title="Pay $5 to unlock saving">
             <button className="btn" disabled style={{ backgroundColor: '#9ca3af', color: '#fff', border: 'none', cursor: 'not-allowed', opacity: 0.55 }}>
               🔒 Save & Publish
             </button>

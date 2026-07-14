@@ -7,6 +7,7 @@ import { startOAuthLogin } from "@/constants/oauth";
 import { trpc } from "@/lib/trpc";
 import { showAlert } from "@/lib/alert";
 import { isPaywallError, isGuestLimitError, isDailyCapError } from "@/lib/trpc-error";
+import { UNLOCK_PRICE_LABEL } from "@shared/const";
 
 const SEEKING = [
   { value: "adopt_or_foster",           label: "Adopt or Foster",        emoji: "🐾" },
@@ -80,7 +81,7 @@ export default function CreateProfileScreen() {
     onSuccess: () => router.replace("/"),
     onError: (err) => {
       if (isDailyCapError(err)) {
-        showAlert("Daily limit reached", "Pay $10 for 40 more today.");
+        showAlert("Daily limit reached", `Pay ${UNLOCK_PRICE_LABEL} for 40 more today.`);
         router.push("/subscribe");
         return;
       }

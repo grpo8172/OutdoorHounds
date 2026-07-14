@@ -64,7 +64,7 @@ export const subscriptionsRouter = router({
         "listing",
       );
 
-      // A repeat $10 purchase while already unlocked is a same-day top-up:
+      // A repeat $1 purchase while already unlocked is a same-day top-up:
       // grants PAID_DAILY_WRITE_LIMIT more writes for today on top of the
       // base daily cap (see writeProcedure in _core/trpc.ts). No-op for a
       // first-time purchase, since a brand-new paid user already starts
