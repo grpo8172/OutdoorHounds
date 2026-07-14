@@ -17,7 +17,7 @@ export const tenantRouter = router({
       tagline: config?.tagline ?? null,
       brandColor: config?.brandColor ?? null,
       heroPhotos: (config?.heroPhotos as string[] | null) ?? [],
-      modeConfig: (config?.modeConfig as Array<{ key: string; active: boolean; emoji: string; label: string }> | null) ?? [],
+      modeConfig: (config?.modeConfig as Array<{ key: string; active: boolean; emoji: string; label: string; subtitle?: string | null; image?: string | null }> | null) ?? [],
       chatGreeting: config?.chatGreeting ?? null,
       chatPlaceholder: config?.chatPlaceholder ?? null,
       chatDisclaimer: config?.chatDisclaimer ?? null,

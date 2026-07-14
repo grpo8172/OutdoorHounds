@@ -3,13 +3,13 @@ import { getMyConfig, updateConfig, uploadConfigPhotos, getAdminToken } from '..
 import AdminLoginGate, { useAdminAuth } from '../admin-auth/AdminLoginGate'
 
 const DEFAULT_MODES = [
-  { key: 'pet',                 active: true, emoji: '🐾', label: 'Adopt / Foster' },
-  { key: 'service',             active: true, emoji: '🦮', label: 'Pet Services' },
-  { key: 'event',               active: true, emoji: '🎉', label: 'Pet Events' },
-  { key: 'stall',               active: true, emoji: '🛍️', label: 'Stalls & Shops' },
-  { key: 'lost_found',          active: true, emoji: '🔍', label: 'Lost & Found' },
-  { key: 'hike',                active: true, emoji: '🥾', label: 'Group Hikes' },
-  { key: 'petting_zoo_booking', active: true, emoji: '🐑', label: 'Mini Petting Zoo' },
+  { key: 'pet',                 active: true, emoji: '🐾', label: 'Adopt / Foster',   subtitle: 'Give a pet a loving home', image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&h=300&fit=crop' },
+  { key: 'service',             active: true, emoji: '🦮', label: 'Pet Services',     subtitle: 'Trusted care near you',    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&h=300&fit=crop' },
+  { key: 'event',               active: true, emoji: '🎉', label: 'Pet Events',       subtitle: 'Join the community',       image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop' },
+  { key: 'stall',               active: true, emoji: '🛍️', label: 'Stalls & Shops',   subtitle: 'Discover pet products',    image: 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?w=600&h=300&fit=crop' },
+  { key: 'lost_found',          active: true, emoji: '🔍', label: 'Lost & Found',     subtitle: 'Help reunite pets',        image: 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?w=600&h=300&fit=crop' },
+  { key: 'hike',                active: true, emoji: '🥾', label: 'Group Hikes',      subtitle: 'Join the community',       image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop' },
+  { key: 'petting_zoo_booking', active: true, emoji: '🐑', label: 'Mini Petting Zoo', subtitle: 'Join the community',       image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop' },
 ]
 
 // Namespaced by admin token (not a flat key) — otherwise switching between
@@ -25,7 +25,9 @@ function mergeConfig(data) {
   const existing = data.mode_config || []
   const merged = DEFAULT_MODES.map(def => {
     const found = existing.find(m => m.key === def.key)
-    return found || def
+    // Spread def first so a category saved before `subtitle` existed still
+    // gets a sensible fallback instead of an empty field in the editor.
+    return found ? { ...def, ...found } : def
   })
   return { ...data, site_emoji: data.site_emoji ?? '🐾', mode_config: merged }
 }
@@ -102,6 +104,7 @@ function OwnerSetupInner({ isTryout }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadingModeKey, setUploadingModeKey] = useState(null)
 
   useEffect(() => {
     getMyConfig().then(data => {
@@ -116,6 +119,19 @@ function OwnerSetupInner({ isTryout }) {
       ...config,
       mode_config: config.mode_config.map(m => m.key === key ? { ...m, [field]: value } : m),
     })
+  }
+
+  const handleModeImageUpload = async (key, e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploadingModeKey(key)
+    try {
+      const { urls } = await uploadConfigPhotos([file])
+      if (urls?.[0]) updateMode(key, 'image', urls[0])
+    } finally {
+      setUploadingModeKey(null)
+    }
   }
 
   const removePhoto = (url) => {
@@ -241,41 +257,76 @@ function OwnerSetupInner({ isTryout }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {config.mode_config.map(mode => (
             <div key={mode.key} style={{
-              display: 'flex', alignItems: 'center', gap: '0.75rem',
+              display: 'flex', flexDirection: 'column', gap: '0.5rem',
               padding: '0.75rem 1rem', borderRadius: 10,
               border: `1.5px solid ${mode.active ? '#e8843c' : '#e5e7eb'}`,
               backgroundColor: mode.active ? '#fff7f0' : '#fafafa',
               opacity: mode.active ? 1 : 0.65,
               transition: 'all 0.15s',
             }}>
-              {/* Toggle */}
-              <input
-                type="checkbox"
-                checked={mode.active}
-                onChange={e => updateMode(mode.key, 'active', e.target.checked)}
-                style={{ width: 18, height: 18, accentColor: '#e8843c', cursor: 'pointer', flexShrink: 0 }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                {/* Toggle */}
+                <input
+                  type="checkbox"
+                  checked={mode.active}
+                  onChange={e => updateMode(mode.key, 'active', e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: '#e8843c', cursor: 'pointer', flexShrink: 0 }}
+                />
 
-              {/* Emoji */}
+                {/* Emoji */}
+                <input
+                  value={mode.emoji}
+                  onChange={e => updateMode(mode.key, 'emoji', e.target.value)}
+                  style={{
+                    width: 48, textAlign: 'center', fontSize: '1.4rem',
+                    border: '1px solid #e5e7eb', borderRadius: 8, padding: '4px',
+                    background: 'white', flexShrink: 0,
+                  }}
+                  maxLength={4}
+                />
+
+                {/* Label */}
+                <input
+                  value={mode.label}
+                  onChange={e => updateMode(mode.key, 'label', e.target.value)}
+                  placeholder="Category name"
+                  style={{ ...inputStyle, margin: 0, flex: 1, fontSize: '0.9rem', padding: '0.45rem 0.75rem' }}
+                  disabled={!mode.active}
+                />
+              </div>
+
+              {/* Subtitle — the short line shown under the category name on the mobile app's cards */}
               <input
-                value={mode.emoji}
-                onChange={e => updateMode(mode.key, 'emoji', e.target.value)}
+                value={mode.subtitle ?? ''}
+                onChange={e => updateMode(mode.key, 'subtitle', e.target.value)}
+                placeholder="Short description shown under the name"
                 style={{
-                  width: 48, textAlign: 'center', fontSize: '1.4rem',
-                  border: '1px solid #e5e7eb', borderRadius: 8, padding: '4px',
-                  background: 'white', flexShrink: 0,
+                  ...inputStyle, margin: 0, marginLeft: 90, width: 'calc(100% - 90px)', fontSize: '0.8rem',
+                  padding: '0.4rem 0.65rem', color: '#777',
                 }}
-                maxLength={4}
-              />
-
-              {/* Label */}
-              <input
-                value={mode.label}
-                onChange={e => updateMode(mode.key, 'label', e.target.value)}
-                placeholder="Category name"
-                style={{ ...inputStyle, margin: 0, flex: 1, fontSize: '0.9rem', padding: '0.45rem 0.75rem' }}
                 disabled={!mode.active}
               />
+
+              {/* Card photo — background image behind the label on the mobile app's cards */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginLeft: 90 }}>
+                {mode.image && (
+                  <img src={mode.image} alt="" style={{ width: 48, height: 32, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb', flexShrink: 0 }} />
+                )}
+                <label style={{
+                  fontSize: '0.78rem', fontWeight: 600, color: '#e8843c', cursor: mode.active ? 'pointer' : 'default',
+                  border: '1px solid #fcd9b6', borderRadius: 8, padding: '0.3rem 0.6rem',
+                  opacity: (!mode.active || uploadingModeKey === mode.key) ? 0.5 : 1,
+                }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    disabled={!mode.active || uploadingModeKey === mode.key}
+                    onChange={e => handleModeImageUpload(mode.key, e)}
+                  />
+                  {uploadingModeKey === mode.key ? 'Uploading…' : mode.image ? 'Change photo' : 'Add photo'}
+                </label>
+              </div>
             </div>
           ))}
         </div>

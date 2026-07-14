@@ -9,6 +9,13 @@ class ModeConfig(BaseModel):
     active: bool
     emoji: str
     label: str
+    # The mobile app's category cards show a short line under the label
+    # (e.g. "Discover pet products") — optional so tenants created before
+    # this field existed just fall back to mobile's own static copy.
+    subtitle: Optional[str] = None
+    # Background photo for the mobile category card. Optional for the same
+    # reason as subtitle — falls back to mobile's own stock photo per category.
+    image: Optional[str] = None
 
 class OwnerConfigResponse(BaseModel):
     id: int

@@ -80,15 +80,15 @@ class OwnerConfig(Base):
     # Matches a subscriptions.admin_token value (mobile/Drizzle-managed table
     # in the same physical DB) — not a real FK, cross-migration-system.
     admin_token = Column(String(64), nullable=True, unique=True)
-    # Full mode config — each entry: {key, active, emoji, label}
+    # Full mode config — each entry: {key, active, emoji, label, subtitle, image}
     mode_config = Column(JSON, default=lambda: [
-        {"key": "pet",                 "active": True, "emoji": "🐾", "label": "Adopt / Foster"},
-        {"key": "service",             "active": True, "emoji": "🦮", "label": "Pet Services"},
-        {"key": "event",               "active": True, "emoji": "🎉", "label": "Pet Events"},
-        {"key": "stall",               "active": True, "emoji": "🛍️", "label": "Stalls & Shops"},
-        {"key": "lost_found",          "active": True, "emoji": "🔍", "label": "Lost & Found"},
-        {"key": "hike",                "active": True, "emoji": "🥾", "label": "Group Hikes"},
-        {"key": "petting_zoo_booking", "active": True, "emoji": "🐑", "label": "Mini Petting Zoo"},
+        {"key": "pet",                 "active": True, "emoji": "🐾", "label": "Adopt / Foster",   "subtitle": "Give a pet a loving home", "image": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&h=300&fit=crop"},
+        {"key": "service",             "active": True, "emoji": "🦮", "label": "Pet Services",     "subtitle": "Trusted care near you",    "image": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&h=300&fit=crop"},
+        {"key": "event",               "active": True, "emoji": "🎉", "label": "Pet Events",       "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop"},
+        {"key": "stall",               "active": True, "emoji": "🛍️", "label": "Stalls & Shops",   "subtitle": "Discover pet products",    "image": "https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?w=600&h=300&fit=crop"},
+        {"key": "lost_found",          "active": True, "emoji": "🔍", "label": "Lost & Found",     "subtitle": "Help reunite pets",        "image": "https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?w=600&h=300&fit=crop"},
+        {"key": "hike",                "active": True, "emoji": "🥾", "label": "Group Hikes",      "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop"},
+        {"key": "petting_zoo_booking", "active": True, "emoji": "🐑", "label": "Mini Petting Zoo", "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop"},
     ])
     hero_photos = Column(JSON, default=lambda: [])
     brand_color = Column(String(16), default="#e8843c")

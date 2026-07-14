@@ -1,7 +1,7 @@
 import { MODES } from "./modes";
 import { AppMode } from "./mockData";
 
-export type TenantModeEntry = { key: string; active: boolean; emoji: string; label: string };
+export type TenantModeEntry = { key: string; active: boolean; emoji: string; label: string; subtitle?: string | null; image?: string | null };
 
 // Web's mode_config is keyed by item_type; mobile's MODES is keyed by the
 // coarser AppMode. pet_events rolls up three web keys — mirrors the same
@@ -39,13 +39,15 @@ export function mergeTenantModes(modeConfig: TenantModeEntry[] | null) {
       return entries.some((e) => e.active) ? mode : null;
     }
 
-    // Single 1:1-mapped key: honor both active/inactive and label/emoji overrides.
+    // Single 1:1-mapped key: honor active/inactive plus label/emoji/subtitle/image overrides.
     const entry = entries[0];
     if (!entry.active) return null;
     return {
       ...mode,
       title: entry.label || mode.title,
       emoji: entry.emoji || mode.emoji,
+      subtitle: entry.subtitle || mode.subtitle,
+      image: entry.image || mode.image,
     };
   }).filter((m): m is (typeof MODES)[number] => m !== null);
 }
