@@ -70,7 +70,7 @@ export default function ItemDetail() {
         <h2 style={{ margin: '0.5rem 0', fontSize: '1.75rem' }}>{item.name}</h2>
 
         {m.location && <p style={{ color: '#888', margin: '0.25rem 0' }}>📍 {m.location}</p>}
-        {item.price && <p style={{ fontWeight: 600, color: '#e8843c', margin: '0.25rem 0' }}>{item.price}</p>}
+        {item.price && <p style={{ fontWeight: 600, color: 'var(--accent)', margin: '0.25rem 0' }}>{item.price}</p>}
 
         <p style={{ lineHeight: 1.7, marginTop: '1rem', color: '#333' }}>{item.description}</p>
 
@@ -88,7 +88,7 @@ export default function ItemDetail() {
         <button
           className="btn"
           onClick={handleEnquire}
-          style={{ marginTop: '1.5rem', backgroundColor: '#e8843c', color: '#fff', border: 'none' }}
+          style={{ marginTop: '1.5rem', backgroundColor: 'var(--accent)', color: '#fff', border: 'none' }}
         >
           Enquire about this listing
         </button>

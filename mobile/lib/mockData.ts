@@ -3,7 +3,15 @@ export type AppMode =
   | "pet_services"
   | "pet_events"
   | "stalls_and_shops"
-  | "lost_and_found";
+  | "lost_and_found"
+  // Split-out siblings of "pet_events" — the default tenant keeps browsing
+  // them as one merged "pet_events" bucket (unchanged), but a non-default
+  // tenant that has customised these three differently gets them as
+  // independent cards instead of one generic merged card. See
+  // lib/tenant-modes.ts.
+  | "event"
+  | "hike"
+  | "petting_zoo_booking";
 
 export interface Profile {
   id: string;

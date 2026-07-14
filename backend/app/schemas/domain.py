@@ -28,6 +28,8 @@ class OwnerConfigResponse(BaseModel):
     mode_config: List[ModeConfig]
     hero_photos: List[str]
     brand_color: Optional[str] = "#e8843c"
+    banner_color: Optional[str] = None
+    background_color: Optional[str] = None
     # Only meaningful to the tenant's own admin (their shareable /t/<slug>
     # link) — public/unauthenticated /api/config responses omit it via
     # get_config's own logic, see main.py.
@@ -46,6 +48,8 @@ class OwnerConfigUpdate(BaseModel):
     mode_config: Optional[List[ModeConfig]] = None
     hero_photos: Optional[List[str]] = None
     brand_color: Optional[str] = None
+    banner_color: Optional[str] = None
+    background_color: Optional[str] = None
 
 class CatalogueItemBase(BaseModel):
     item_type: str

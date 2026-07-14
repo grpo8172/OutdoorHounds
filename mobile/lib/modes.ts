@@ -40,9 +40,12 @@ export const MODES = [
 
 // Fields shown per mode in the create form
 export const MODE_FIELDS: Record<AppMode, { showBreed: boolean; showAge: boolean; showContact: boolean }> = {
-  adopt_or_foster:  { showBreed: true,  showAge: true,  showContact: false },
-  pet_services:     { showBreed: false, showAge: false, showContact: false },
-  pet_events:       { showBreed: false, showAge: false, showContact: false },
-  stalls_and_shops: { showBreed: false, showAge: false, showContact: false },
-  lost_and_found:   { showBreed: true,  showAge: false, showContact: true  },
+  adopt_or_foster:     { showBreed: true,  showAge: true,  showContact: false },
+  pet_services:        { showBreed: false, showAge: false, showContact: false },
+  pet_events:          { showBreed: false, showAge: false, showContact: false },
+  stalls_and_shops:    { showBreed: false, showAge: false, showContact: false },
+  lost_and_found:      { showBreed: true,  showAge: false, showContact: true  },
+  event:               { showBreed: false, showAge: false, showContact: false },
+  hike:                { showBreed: false, showAge: false, showContact: false },
+  petting_zoo_booking: { showBreed: false, showAge: false, showContact: false },
 };

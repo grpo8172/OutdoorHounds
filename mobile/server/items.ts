@@ -16,13 +16,20 @@ const ITEM_TYPES = [
 ] as const;
 
 // Each app mode maps to a unique itemType stored in catalogue_items.item_type.
-// Legacy types (hike, petting_zoo_booking) roll up to pet_events for backwards compat.
+// "pet_events" rolls up event/hike/petting_zoo_booking for backwards compat
+// (the default tenant's static, unmerged browsing experience). The three
+// underlying types are also individually addressable so a non-default
+// tenant that's customised them differently can browse them as independent
+// cards instead — see lib/tenant-modes.ts on the client.
 const MODE_TO_ITEM_TYPE: Record<string, string> = {
   adopt_or_foster: "pet",
   pet_services:    "service",
   pet_events:      "event",
   stalls_and_shops: "stall",
   lost_and_found:  "lost_found",
+  event:               "event",
+  hike:                "hike",
+  petting_zoo_booking: "petting_zoo_booking",
 };
 
 const LEGACY_ITEM_TYPES: Record<string, string[]> = {
@@ -83,6 +90,9 @@ export const itemsRouter = router({
           "pet_events",
           "stalls_and_shops",
           "lost_and_found",
+          "event",
+          "hike",
+          "petting_zoo_booking",
         ]),
         lat: z.number().optional(),
         lng: z.number().optional(),
@@ -157,6 +167,9 @@ export const itemsRouter = router({
           "pet_events",
           "stalls_and_shops",
           "lost_and_found",
+          "event",
+          "hike",
+          "petting_zoo_booking",
         ]),
         name: z.string().min(1),
         description: z.string().min(1),

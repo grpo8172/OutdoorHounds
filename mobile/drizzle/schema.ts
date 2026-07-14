@@ -82,6 +82,8 @@ export const ownerConfig = mysqlTable("owner_config", {
   modeConfig: json("mode_config"),
   heroPhotos: json("hero_photos"),
   brandColor: varchar("brand_color", { length: 16 }),
+  bannerColor: varchar("banner_color", { length: 16 }),
+  backgroundColor: varchar("background_color", { length: 16 }),
 });
 
 export type OwnerConfig = typeof ownerConfig.$inferSelect;

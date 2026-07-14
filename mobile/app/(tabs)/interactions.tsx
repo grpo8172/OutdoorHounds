@@ -8,6 +8,7 @@ import { startOAuthLogin } from "@/constants/oauth";
 import { showAlert } from "@/lib/alert";
 import { isPaywallError, isGuestLimitError, isDailyCapError } from "@/lib/trpc-error";
 import { UNLOCK_PRICE_LABEL } from "@shared/const";
+import { useActiveTenant } from "@/hooks/use-active-tenant";
 
 type Tab = "saved" | "chats";
 
@@ -33,6 +34,7 @@ function SignInPrompt() {
 
 export default function InteractionsScreen() {
   const { user, loading: authLoading } = useAuth();
+  const { backgroundColor } = useActiveTenant();
   const [activeTab, setActiveTab] = useState<Tab>("saved");
 
   const savedItemsQuery = trpc.messages.getSavedItems.useQuery(undefined, {
@@ -68,7 +70,7 @@ export default function InteractionsScreen() {
   }
 
   return (
-    <ScreenContainer className="p-0">
+    <ScreenContainer className="p-0" containerStyle={backgroundColor ? { backgroundColor } : undefined}>
       {/* Tab bar */}
       <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e5e7eb", backgroundColor: "#fff" }}>
         {(["saved", "chats"] as Tab[]).map((tab) => {

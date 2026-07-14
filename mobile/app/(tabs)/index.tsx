@@ -14,7 +14,7 @@ export default function HomeScreen() {
   const { user, loading } = useAuth();
   const {
     isNonDefault, businessName, siteEmoji: tenantEmoji, slug,
-    brandColor, heroPhoto, tagline, modeConfig, leave,
+    brandColor, backgroundColor, heroPhoto, tagline, modeConfig, leave,
   } = useActiveTenant();
 
   const siteName = businessName ?? "Outdoor Hounds";
@@ -23,7 +23,7 @@ export default function HomeScreen() {
   const modes = useMemo(() => mergeTenantModes(modeConfig), [modeConfig]);
 
   return (
-    <ScreenContainer>
+    <ScreenContainer containerStyle={backgroundColor ? { backgroundColor } : undefined}>
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 100, gap: 12 }}
         showsVerticalScrollIndicator={false}

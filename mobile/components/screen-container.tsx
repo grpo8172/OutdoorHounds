@@ -18,6 +18,12 @@ export interface ScreenContainerProps extends ViewProps {
    */
   containerClassName?: string;
   /**
+   * Inline style for the outer container (background layer) — takes
+   * precedence over the "bg-background" className, used for per-tenant
+   * background colours that can't be known at Tailwind build time.
+   */
+  containerStyle?: ViewProps["style"];
+  /**
    * Additional className for the SafeAreaView (content layer).
    */
   safeAreaClassName?: string;
@@ -43,6 +49,7 @@ export function ScreenContainer({
   edges = ["top", "left", "right"],
   className,
   containerClassName,
+  containerStyle,
   safeAreaClassName,
   style,
   ...props
@@ -54,6 +61,7 @@ export function ScreenContainer({
         "bg-background",
         containerClassName
       )}
+      style={containerStyle}
       {...props}
     >
       <SafeAreaView

@@ -51,6 +51,25 @@ DEFAULT_MODE_CONFIG = [
     {"key": "petting_zoo_booking", "active": True, "emoji": "🐑", "label": "Mini Petting Zoo", "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop"},
 ]
 
+# Seed for a brand-new tenant (see get_admin's auto-provision block below) —
+# deliberately NOT DEFAULT_MODE_CONFIG. That one is Outdoor Hounds' own
+# pet-flavoured content (labels, stock photos of dogs) and only exists as a
+# fallback for tenant 1 itself. A new tenant's business might be anything
+# (see OwnerSetup's own "not just pets" tagline) — starting them off with
+# "Adopt / Foster" and stock dog photos is leftover branding from the
+# original app, not a neutral template. Every category starts inactive and
+# unlabelled so nothing pet-themed ever reaches a new tenant's storefront
+# before its owner explicitly sets it up.
+NEW_TENANT_MODE_CONFIG = [
+    {"key": "pet",                 "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
+    {"key": "service",             "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
+    {"key": "event",               "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
+    {"key": "stall",               "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
+    {"key": "lost_found",          "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
+    {"key": "hike",                "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
+    {"key": "petting_zoo_booking", "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -128,8 +147,8 @@ def get_admin(credentials: HTTPAuthorizationCredentials = Depends(_bearer), db: 
         slug = secrets.token_urlsafe(6).lower().replace("-", "").replace("_", "")[:10]
         tenant = models.OwnerConfig(
             business_name="My Business",
-            tagline="Adopt a friend, join a hike, book a service.",
-            mode_config=DEFAULT_MODE_CONFIG,
+            tagline="",
+            mode_config=NEW_TENANT_MODE_CONFIG,
             hero_photos=[],
             slug=slug,
             admin_token=token,

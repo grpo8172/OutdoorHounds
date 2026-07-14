@@ -9,14 +9,16 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { ImagePickerField } from "@/components/image-picker-field";
 import { useAuth } from "@/hooks/use-auth";
+import { useActiveTenant } from "@/hooks/use-active-tenant";
 import { startOAuthLogin } from "@/constants/oauth";
 import { trpc } from "@/lib/trpc";
 import { AppMode } from "@/lib/mockData";
-import { MODES, MODE_FIELDS } from "@/lib/modes";
+import { MODE_FIELDS } from "@/lib/modes";
+import { mergeTenantModes } from "@/lib/tenant-modes";
 import { UNLOCK_PRICE_LABEL } from "@shared/const";
 import { showAlert } from "@/lib/alert";
 import { isPaywallError, isGuestLimitError, isDailyCapError } from "@/lib/trpc-error";
@@ -197,6 +199,9 @@ export default function CreateListingScreen() {
   });
   const hasProfile = !!profileQuery.data?.displayName;
 
+  const { modeConfig: tenantModeConfig } = useActiveTenant();
+  const modes = useMemo(() => mergeTenantModes(tenantModeConfig), [tenantModeConfig]);
+
   const subscriptionQuery = trpc.subscriptions.getStatus.useQuery(undefined, {
     enabled: isAuthenticated && hasProfile,
   });
@@ -337,7 +342,7 @@ function ListingForm() {
           <Text className="text-2xl font-bold text-foreground">Listing Live!</Text>
           <Text className="text-base text-muted text-center">
             Your listing is now visible in the{" "}
-            {selectedMode ? MODES.find((m) => m.id === selectedMode)?.title : ""} feed.
+            {selectedMode ? modes.find((m) => m.id === selectedMode)?.title : ""} feed.
           </Text>
           <Pressable
             onPress={() => { setForm(EMPTY_FORM); setImageUrls([]); setVideoUrl(null); setSubmitted(false); }}
@@ -374,7 +379,7 @@ function ListingForm() {
           <Field label="Category" required>
             <Text className="text-xs text-muted mb-2 -mt-1">Tap one to select</Text>
             <View className="flex-row flex-wrap gap-2">
-              {MODES.map((mode) => {
+              {modes.map((mode) => {
                 const selected = form.mode === mode.id;
                 return (
                   <Pressable

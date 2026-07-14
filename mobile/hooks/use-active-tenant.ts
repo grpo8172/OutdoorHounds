@@ -54,6 +54,8 @@ export function useActiveTenant() {
     // already equal today's hardcoded look (verified against prod), so
     // there's no gating needed here, unlike tagline/modeConfig below.
     brandColor: query.data?.brandColor ?? null,
+    bannerColor: query.data?.bannerColor ?? null,
+    backgroundColor: query.data?.backgroundColor ?? null,
     heroPhoto: resolvePhotoUrl(query.data?.heroPhotos?.[0] ?? null),
     // Tenant 1's tagline/category labels in the DB don't match this app's
     // own hardcoded copy — only apply them for a real (non-default) tenant,

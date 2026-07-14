@@ -42,7 +42,7 @@ export function EnquiryModal({ item, onClose }) {
             <p style={{ color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.5 }}>
               We'll review your message and get back to you shortly. Nothing is confirmed until the owner approves.
             </p>
-            <button className="btn" style={{ width: '100%', marginTop: '1.25rem', background: '#e8843c' }} onClick={onClose}>
+            <button className="btn" style={{ width: '100%', marginTop: '1.25rem', background: 'var(--accent)' }} onClick={onClose}>
               Done
             </button>
           </div>
@@ -64,7 +64,7 @@ export function EnquiryModal({ item, onClose }) {
                 boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none',
                 transition: 'border-color 0.15s',
               }}
-              onFocus={e => { e.target.style.borderColor = '#e8843c' }}
+              onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
               onBlur={e => { e.target.style.borderColor = '#d1d5db' }}
             />
             {error && (
@@ -81,7 +81,7 @@ export function EnquiryModal({ item, onClose }) {
               </button>
               <button
                 className="btn"
-                style={{ flex: 2, background: message.trim() && !submitting ? '#e8843c' : '#f3b07a', cursor: message.trim() && !submitting ? 'pointer' : 'default' }}
+                style={{ flex: 2, background: 'var(--accent)', opacity: message.trim() && !submitting ? 1 : 0.5, cursor: message.trim() && !submitting ? 'pointer' : 'default' }}
                 onClick={handleSubmit}
                 disabled={submitting || !message.trim()}
               >

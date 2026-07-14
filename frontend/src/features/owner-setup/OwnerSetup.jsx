@@ -54,6 +54,68 @@ const BRAND_COLORS = [
   { label: 'Purple',  value: '#9333ea' },
 ]
 
+const BANNER_COLORS = [
+  { label: 'Forest',  value: '#2d5a3d' },
+  { label: 'Navy',    value: '#1e3a5f' },
+  { label: 'Plum',    value: '#4c1d3d' },
+  { label: 'Slate',   value: '#334155' },
+  { label: 'Rust',    value: '#7c2d12' },
+  { label: 'Charcoal', value: '#27272a' },
+]
+
+const BACKGROUND_COLORS = [
+  { label: 'Sage',    value: '#a8d4b8' },
+  { label: 'Cream',   value: '#f5f1e8' },
+  { label: 'Blush',   value: '#fbe4e6' },
+  { label: 'Sky',     value: '#dbeafe' },
+  { label: 'Sand',    value: '#ede4d3' },
+  { label: 'Lavender', value: '#e6e0f5' },
+]
+
+// Shared swatch picker for the three colour fields below. `allowClear` lets
+// the optional fields (banner/background) fall back to the CSS default
+// instead of being forced to pick one of the presets.
+function ColorField({ title, hint, colors, value, onChange, allowClear }) {
+  return (
+    <section style={sectionStyle}>
+      <h3 style={headingStyle}>{title}</h3>
+      <p style={{ fontSize: '0.85rem', color: '#777', margin: '0 0 1rem' }}>{hint}</p>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        {colors.map(c => (
+          <button
+            key={c.value}
+            title={c.label}
+            onClick={() => onChange(c.value)}
+            style={{
+              width: 40, height: 40, borderRadius: '50%',
+              backgroundColor: c.value,
+              border: value === c.value ? '3px solid #111' : '2px solid transparent',
+              boxShadow: value === c.value ? '0 0 0 2px #fff, 0 0 0 4px #111' : 'none',
+              cursor: 'pointer',
+            }}
+          />
+        ))}
+        {allowClear && (
+          <button
+            title="Default"
+            onClick={() => onChange('')}
+            style={{
+              width: 40, height: 40, borderRadius: '50%',
+              background: 'repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 50% / 10px 10px',
+              border: !value ? '3px solid #111' : '2px solid transparent',
+              boxShadow: !value ? '0 0 0 2px #fff, 0 0 0 4px #111' : 'none',
+              cursor: 'pointer',
+            }}
+          />
+        )}
+      </div>
+      <p style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '0.6rem' }}>
+        {value ? <>Selected: <span style={{ color: value, fontWeight: 600 }}>{value}</span></> : 'Using the default'}
+      </p>
+    </section>
+  )
+}
+
 const MOBILE_APP_URL = import.meta.env.VITE_MOBILE_APP_URL || 'http://localhost:8081'
 
 // Every admin's own isolated site — the link they hand out to their people.
@@ -100,6 +162,8 @@ function OwnerSetupInner({ isTryout }) {
     mode_config: [],
     hero_photos: [],
     brand_color: '#e8843c',
+    banner_color: '',
+    background_color: '',
   }))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -164,6 +228,8 @@ function OwnerSetupInner({ isTryout }) {
         mode_config: config.mode_config,
         hero_photos: config.hero_photos,
         brand_color: config.brand_color,
+        banner_color: config.banner_color || null,
+        background_color: config.background_color || null,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -221,32 +287,30 @@ function OwnerSetupInner({ isTryout }) {
           placeholder="e.g. Find your next adventure or join a group" />
       </section>
 
-      {/* Brand colour */}
-      <section style={sectionStyle}>
-        <h3 style={headingStyle}>Brand colour</h3>
-        <p style={{ fontSize: '0.85rem', color: '#777', margin: '0 0 1rem' }}>
-          Sets the accent colour used across your storefront, buttons, and tile cards.
-        </p>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {BRAND_COLORS.map(c => (
-            <button
-              key={c.value}
-              title={c.label}
-              onClick={() => setConfig({ ...config, brand_color: c.value })}
-              style={{
-                width: 40, height: 40, borderRadius: '50%',
-                backgroundColor: c.value,
-                border: config.brand_color === c.value ? '3px solid #111' : '2px solid transparent',
-                boxShadow: config.brand_color === c.value ? '0 0 0 2px #fff, 0 0 0 4px #111' : 'none',
-                cursor: 'pointer',
-              }}
-            />
-          ))}
-        </div>
-        <p style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '0.6rem' }}>
-          Selected: <span style={{ color: config.brand_color, fontWeight: 600 }}>{config.brand_color}</span>
-        </p>
-      </section>
+      {/* Colours */}
+      <ColorField
+        title="Accent colour"
+        hint="Buttons, price tags, the selected filter, and enquiry forms across your storefront."
+        colors={BRAND_COLORS}
+        value={config.brand_color}
+        onChange={v => setConfig({ ...config, brand_color: v })}
+      />
+      <ColorField
+        title="Banner colour"
+        hint="Background of the header at the top of your storefront, behind your business name and tagline."
+        colors={BANNER_COLORS}
+        value={config.banner_color}
+        onChange={v => setConfig({ ...config, banner_color: v })}
+        allowClear
+      />
+      <ColorField
+        title="Page background"
+        hint="Background colour behind your listing cards, for the rest of the page below the banner."
+        colors={BACKGROUND_COLORS}
+        value={config.background_color}
+        onChange={v => setConfig({ ...config, background_color: v })}
+        allowClear
+      />
 
       {/* Mode config */}
       <section style={sectionStyle}>

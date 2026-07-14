@@ -5,18 +5,18 @@ import { ScreenContainer } from "@/components/screen-container";
 import { ProfileCard } from "@/components/profile-card";
 import { useSwipeProfiles } from "@/hooks/use-swipe-profiles";
 import { useActiveTenant } from "@/hooks/use-active-tenant";
-import { mergeTenantModes } from "@/lib/tenant-modes";
+import { mergeTenantModes, ALL_MODE_IDS } from "@/lib/tenant-modes";
 import { AppMode } from "@/lib/mockData";
-import { MODES } from "@/lib/modes";
 
 const DEFAULT_BRAND_COLOR = "#e8843c";
 
 export default function DiscoverScreen() {
   const { mode: modeParam } = useLocalSearchParams<{ mode: string }>();
-  const { modeConfig: tenantModeConfig, brandColor } = useActiveTenant();
+  const { modeConfig: tenantModeConfig, brandColor, backgroundColor } = useActiveTenant();
   const brand = brandColor ?? DEFAULT_BRAND_COLOR;
+  const containerStyle = backgroundColor ? { backgroundColor } : undefined;
 
-  const modeExists = MODES.some((m) => m.id === modeParam);
+  const modeExists = ALL_MODE_IDS.includes(modeParam as AppMode);
   const modes = useMemo(() => mergeTenantModes(tenantModeConfig), [tenantModeConfig]);
   const modeConfig = modes.find((m) => m.id === modeParam);
 
@@ -35,7 +35,7 @@ export default function DiscoverScreen() {
 
   if (!modeExists) {
     return (
-      <ScreenContainer className="p-6 items-center justify-center">
+      <ScreenContainer className="p-6 items-center justify-center" containerStyle={containerStyle}>
         <Text className="text-lg text-foreground">Unknown category</Text>
       </ScreenContainer>
     );
@@ -47,7 +47,7 @@ export default function DiscoverScreen() {
   // has since disabled).
   if (!modeConfig) {
     return (
-      <ScreenContainer className="p-6 items-center justify-center">
+      <ScreenContainer className="p-6 items-center justify-center" containerStyle={containerStyle}>
         <View className="items-center gap-4">
           <Text style={{ fontSize: 40 }}>🚫</Text>
           <Text className="text-lg font-bold text-foreground text-center">Not available here</Text>
@@ -77,7 +77,7 @@ export default function DiscoverScreen() {
   // Loading state while the DB query resolves
   if (isLoading) {
     return (
-      <ScreenContainer className="items-center justify-center gap-3">
+      <ScreenContainer className="items-center justify-center gap-3" containerStyle={containerStyle}>
         <ActivityIndicator size="large" color="#0a7ea4" />
         <Text className="text-sm text-muted">Loading {modeConfig.title.toLowerCase()}...</Text>
       </ScreenContainer>
@@ -87,7 +87,7 @@ export default function DiscoverScreen() {
   // All listings swiped through
   if (!currentProfile) {
     return (
-      <ScreenContainer className="p-6 items-center justify-center">
+      <ScreenContainer className="p-6 items-center justify-center" containerStyle={containerStyle}>
         <View className="items-center gap-4">
           <Text style={{ fontSize: 48 }}>{modeConfig.emoji}</Text>
           <Text className="text-3xl font-bold text-foreground">All done!</Text>
@@ -99,7 +99,7 @@ export default function DiscoverScreen() {
             className="rounded-lg px-6 py-3 mt-2 active:opacity-80"
             style={{ backgroundColor: brand }}
           >
-            <Text className="font-semibold" style={{ color: "#a8d4b8" }}>Start Over</Text>
+            <Text className="font-semibold" style={{ color: "#fff" }}>Start Over</Text>
           </Pressable>
         </View>
       </ScreenContainer>
@@ -107,7 +107,7 @@ export default function DiscoverScreen() {
   }
 
   return (
-    <ScreenContainer className="p-6">
+    <ScreenContainer className="p-6" containerStyle={containerStyle}>
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={{ flexGrow: 1 }}

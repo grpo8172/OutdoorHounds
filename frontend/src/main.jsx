@@ -25,11 +25,22 @@ function AppInner() {
   const homeHref = slug ? `/t/${slug}` : '/'
 
   useEffect(() => {
+    // Applied on <html> (not a component wrapper) so it reaches <body>'s
+    // own background — a CSS var set on a descendant div can't cascade
+    // upward to an ancestor. Always set-or-remove (never "only if truthy")
+    // so navigating from a themed tenant to one with no custom colour
+    // resets cleanly instead of leaking the previous tenant's palette.
+    const applyVar = (name, value) => {
+      if (value) document.documentElement.style.setProperty(name, value)
+      else document.documentElement.style.removeProperty(name)
+    }
     getConfig(slug)
       .then(d => {
         if (d.business_name) setSiteName(d.business_name)
         if (d.site_emoji) setSiteEmoji(d.site_emoji)
-        if (d.brand_color) document.documentElement.style.setProperty('--brand', d.brand_color)
+        applyVar('--accent', d.brand_color)
+        applyVar('--banner', d.banner_color)
+        applyVar('--bg', d.background_color)
       })
       .catch(() => {})
   }, [slug])
@@ -41,7 +52,7 @@ function AppInner() {
         <div className="nav-links">
           <Link to={homeHref}>Home</Link>
           <Link to="/chat">Ask Us</Link>
-          <a href={MOBILE_APP_URL} target="_blank" rel="noreferrer">Open the App</a>
+          <a href={`${MOBILE_APP_URL}${slug ? `/t/${slug}` : ''}`} target="_blank" rel="noreferrer">Open the App</a>
           <Link to="/setup">Owner Setup</Link>
           <Link to="/admin">Admin</Link>
         </div>

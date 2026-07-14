@@ -92,6 +92,12 @@ class OwnerConfig(Base):
     ])
     hero_photos = Column(JSON, default=lambda: [])
     brand_color = Column(String(16), default="#e8843c")
+    # Top hero/header section background — falls back to the CSS default
+    # gradient when unset (frontend/src/index.css's .hero rule).
+    banner_color = Column(String(16), nullable=True)
+    # Overall page background, behind the hero/cards — falls back to the
+    # CSS default (frontend/src/index.css's body rule) when unset.
+    background_color = Column(String(16), nullable=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 class Profile(Base):
