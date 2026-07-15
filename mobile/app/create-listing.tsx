@@ -271,10 +271,10 @@ export default function CreateListingScreen() {
     );
   }
 
-  return <ListingForm />;
+  return <ListingForm modes={modes} />;
 }
 
-function ListingForm() {
+function ListingForm({ modes }: { modes: ReturnType<typeof mergeTenantModes> }) {
   const router = useRouter();
   const [form, setForm] = useState(EMPTY_FORM);
   const [imageUrls, setImageUrls] = useState<string[]>([]);

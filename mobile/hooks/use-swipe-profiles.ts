@@ -1,9 +1,19 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Profile, AppMode, mockProfiles } from "@/lib/mockData";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "./use-auth";
 import { useLocation } from "@/lib/location-context";
 import { useActiveTenant } from "./use-active-tenant";
+
+// Swipe progress (saved/skipped) previously lived only in this hook's local
+// useState, which is torn down and recreated every time DiscoverScreen
+// unmounts — i.e. every time you back out to the menu and re-enter a
+// category. That made "already seen" listings reappear at the front of the
+// deck, in the same order, as if nothing had happened. This module-level
+// cache keeps saved/skipped listings alive for the life of the app session,
+// keyed by tenant + mode so progress in one community/category never bleeds
+// into another.
+const swipeStateCache = new Map<string, { savedListings: Profile[]; skippedListings: Profile[] }>();
 
 // Reverse mapping: itemType stored in DB → AppMode used in the client
 const ITEM_TYPE_TO_MODE: Record<string, AppMode> = {
@@ -78,7 +88,8 @@ export interface UseSwipeProfilesReturn {
 export function useSwipeProfiles(mode: AppMode = "adopt_or_foster"): UseSwipeProfilesReturn {
   const { user } = useAuth();
   const { lat, lng, radiusKm, enabled: locationEnabled } = useLocation();
-  const { isNonDefault } = useActiveTenant();
+  const { isNonDefault, slug } = useActiveTenant();
+  const cacheKey = `${slug ?? "default"}:${mode}`;
   const saveItemMutation = trpc.messages.saveItem.useMutation({
     // Swiping is a background action — don't interrupt the swipe flow with
     // a modal. The listing is still marked saved locally either way; a
@@ -121,11 +132,40 @@ export function useSwipeProfiles(mode: AppMode = "adopt_or_foster"): UseSwipePro
     [query.isLoading, dbProfiles, mockFiltered, isNonDefault],
   );
 
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [savedListings, setSavedListings] = useState<Profile[]>([]);
   const [skippedListings, setSkippedListings] = useState<Profile[]>([]);
 
-  const currentProfile = allProfiles[currentIndex] ?? null;
+  // Reload from the cache whenever we land on a new tenant+mode bucket
+  // (including the async case where the active tenant's slug resolves a
+  // beat after mount, changing cacheKey from the "default" bucket to the
+  // real one).
+  const loadedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (loadedKeyRef.current === cacheKey) return;
+    loadedKeyRef.current = cacheKey;
+    const cached = swipeStateCache.get(cacheKey);
+    setSavedListings(cached?.savedListings ?? []);
+    setSkippedListings(cached?.skippedListings ?? []);
+  }, [cacheKey]);
+
+  useEffect(() => {
+    swipeStateCache.set(cacheKey, { savedListings, skippedListings });
+  }, [cacheKey, savedListings, skippedListings]);
+
+  // Filter out anything already saved/skipped (rather than tracking a raw
+  // index into allProfiles) so resuming a category picks up with the next
+  // unseen listing regardless of how many were swiped in a prior visit.
+  const seenIds = useMemo(
+    () => new Set([...savedListings, ...skippedListings].map((p) => p.id)),
+    [savedListings, skippedListings],
+  );
+  const visibleProfiles = useMemo(
+    () => allProfiles.filter((p) => !seenIds.has(p.id)),
+    [allProfiles, seenIds],
+  );
+
+  const currentProfile = visibleProfiles[0] ?? null;
+  const currentIndex = savedListings.length + skippedListings.length;
 
   const swipeRight = useCallback(() => {
     if (currentProfile) {
@@ -135,16 +175,13 @@ export function useSwipeProfiles(mode: AppMode = "adopt_or_foster"): UseSwipePro
         if (!isNaN(itemId)) saveItemMutation.mutate({ itemId });
       }
     }
-    setCurrentIndex((prev) => prev + 1);
   }, [currentProfile, user, saveItemMutation]);
 
   const swipeLeft = useCallback(() => {
     if (currentProfile) setSkippedListings((prev) => [...prev, currentProfile]);
-    setCurrentIndex((prev) => prev + 1);
   }, [currentProfile]);
 
   const reset = useCallback(() => {
-    setCurrentIndex(0);
     setSavedListings([]);
     setSkippedListings([]);
   }, []);

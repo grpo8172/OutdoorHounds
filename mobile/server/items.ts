@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, ne, sql, isNotNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { catalogueItems } from "../drizzle/schema";
@@ -109,6 +109,14 @@ export const itemsRouter = router({
         inArray(catalogueItems.itemType, types),
         eq(catalogueItems.tenantId, ctx.tenantId),
       ];
+
+      // Don't show a user their own listing in their own swipe feed —
+      // ctx.user is optional here (publicTenantProcedure), so only guests
+      // who are logged in get this filter; anonymous guests have no
+      // listings to exclude anyway.
+      if (ctx.user) {
+        conditions.push(ne(catalogueItems.userId, ctx.user.id));
+      }
 
       if (input.lat != null && input.lng != null && input.radiusKm != null) {
         // Haversine formula — only filters listings that have coordinates; ones without lat/lng are always included
