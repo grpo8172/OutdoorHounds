@@ -52,6 +52,10 @@ const BRAND_COLORS = [
   { label: 'Green',   value: '#16a34a' },
   { label: 'Sky',     value: '#0284c7' },
   { label: 'Purple',  value: '#9333ea' },
+  { label: 'Pink',    value: '#db2777' },
+  { label: 'Crimson', value: '#b91c1c' },
+  { label: 'Lime',    value: '#65a30d' },
+  { label: 'Cyan',    value: '#0891b2' },
 ]
 
 const BANNER_COLORS = [
@@ -61,6 +65,8 @@ const BANNER_COLORS = [
   { label: 'Slate',   value: '#334155' },
   { label: 'Rust',    value: '#7c2d12' },
   { label: 'Charcoal', value: '#27272a' },
+  { label: 'Maroon',  value: '#6b1d3f' },
+  { label: 'Teal',    value: '#134e4a' },
 ]
 
 const BACKGROUND_COLORS = [
@@ -70,12 +76,16 @@ const BACKGROUND_COLORS = [
   { label: 'Sky',     value: '#dbeafe' },
   { label: 'Sand',    value: '#ede4d3' },
   { label: 'Lavender', value: '#e6e0f5' },
+  { label: 'Mint',    value: '#d1fae5' },
+  { label: 'Peach',   value: '#fde8d7' },
 ]
 
 // Shared swatch picker for the three colour fields below. `allowClear` lets
 // the optional fields (banner/background) fall back to the CSS default
 // instead of being forced to pick one of the presets.
 function ColorField({ title, hint, colors, value, onChange, allowClear }) {
+  const isPreset = colors.some(c => c.value === value)
+  const isCustom = !isPreset && !!value
   return (
     <section style={sectionStyle}>
       <h3 style={headingStyle}>{title}</h3>
@@ -108,6 +118,29 @@ function ColorField({ title, hint, colors, value, onChange, allowClear }) {
             }}
           />
         )}
+        {/* Square swatch, distinct from the round presets above — opens the
+            browser's native colour picker so any hex can be chosen, not
+            just the fixed palette. */}
+        <label
+          title="Pick a custom colour"
+          style={{
+            position: 'relative', width: 40, height: 40, borderRadius: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backgroundColor: isCustom ? value : '#fff',
+            backgroundImage: isCustom ? 'none' : 'linear-gradient(45deg, #f43f5e, #f59e0b, #22c55e, #3b82f6, #8b5cf6)',
+            border: isCustom ? '3px solid #111' : '2px solid #ddd',
+            boxShadow: isCustom ? '0 0 0 2px #fff, 0 0 0 4px #111' : 'none',
+            cursor: 'pointer', overflow: 'hidden',
+          }}
+        >
+          {!isCustom && <span style={{ fontSize: 18, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>+</span>}
+          <input
+            type="color"
+            value={isCustom ? value : '#e8843c'}
+            onChange={e => onChange(e.target.value)}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 'none', padding: 0 }}
+          />
+        </label>
       </div>
       <p style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '0.6rem' }}>
         {value ? <>Selected: <span style={{ color: value, fontWeight: 600 }}>{value}</span></> : 'Using the default'}

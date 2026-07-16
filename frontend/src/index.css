@@ -25,8 +25,19 @@ body {
 }
 
 .brand { font-size: 1.4rem; font-weight: 700; color: white; text-decoration: none; }
-.nav-links a { color: white; margin-left: 1.5rem; text-decoration: none; opacity: 0.9; }
-.nav-links a:hover { opacity: 1; text-decoration: underline; }
+
+.nav-links { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; }
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  opacity: 0.9;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  transition: background 0.15s, opacity 0.15s;
+}
+.nav-links a:hover { opacity: 1; background: rgba(255, 255, 255, 0.28); }
 
 .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
 
@@ -154,3 +165,36 @@ body {
 }
 
 textarea { width: 100%; padding: 0.7rem; border: 1px solid #ccc; border-radius: 8px; font-family: inherit; }
+
+/* Phone-width layout — the desktop nav/hero/grid sizing above overflows and
+   over-pads on a phone screen, and doesn't match the app's own proportions
+   (its hero banner is a fixed 140px tall). */
+@media (max-width: 640px) {
+  .navbar {
+    flex-wrap: wrap;
+    padding: 0.75rem 1rem;
+    row-gap: 0.5rem;
+  }
+  .nav-links { justify-content: center; width: 100%; }
+  .nav-links a { font-size: 0.85rem; padding: 0.4rem 0.8rem; }
+
+  .container { padding: 1rem; }
+
+  .hero {
+    padding: 1.5rem 1.25rem;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-radius: 12px;
+    margin-bottom: 1.25rem;
+  }
+  .hero h1 { font-size: 1.6rem; }
+  .hero p { font-size: 0.9rem; }
+
+  .grid { grid-template-columns: 1fr; gap: 1rem; }
+  .card img { height: 140px; }
+
+  .filter-bar { gap: 0.4rem; }
+  .filter-btn { font-size: 0.85rem; padding: 0.5rem 0.9rem; }
+}

@@ -152,9 +152,9 @@ export default function HomeScreen() {
         >
           <Text style={{ fontSize: 28 }}>🌐</Text>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Visit the Website</Text>
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Manage Admin</Text>
             <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 2 }}>
-              Set up your own business · browse all listings · manage payments
+              Access admin tools · set up your business · manage payments
             </Text>
           </View>
           <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 18 }}>→</Text>
