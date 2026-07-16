@@ -49,7 +49,7 @@ export default function Marketplace() {
   const [mySlug, setMySlug] = useState(undefined)
 
   useEffect(() => {
-    document.title = 'App Marketplace — Outdoor Hounds'
+    document.title = 'App Marketplace — TownHubs'
     getMarketplace().then(setBusinesses).catch(() => setBusinesses([]))
     if (getAdminToken()) {
       getMyConfig().then(d => setMySlug(d.slug ?? null)).catch(() => {})

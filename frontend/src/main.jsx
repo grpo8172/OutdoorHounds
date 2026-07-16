@@ -29,7 +29,6 @@ function AppInner() {
   const location = useLocation()
   const tenantMatch = location.pathname.match(/^\/t\/([^/]+)/)
   const slug = tenantMatch ? tenantMatch[1] : undefined
-  const homeHref = slug ? `/t/${slug}` : '/'
 
   useEffect(() => {
     if (!getAdminToken()) return
@@ -66,7 +65,10 @@ function AppInner() {
   return (
     <>
       <nav className="navbar">
-        <Link to={homeHref} className="brand">{siteEmoji} {siteName}</Link>
+        {/* Fixed platform brand — never the current tenant's name, so it
+            doesn't repeat whatever business name is shown in the hero below
+            (previously both said "Outdoor Hounds" on the default tenant). */}
+        <Link to="/marketplace" className="brand">🏘️ TownHubs</Link>
         <div className="nav-links">
           {/* General/public nav first. Fixed to "/" (not homeHref) — this is
               always the platform's own demo tenant, not "whichever site
