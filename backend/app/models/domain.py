@@ -98,6 +98,10 @@ class OwnerConfig(Base):
     # Overall page background, behind the hero/cards — falls back to the
     # CSS default (frontend/src/index.css's body rule) when unset.
     background_color = Column(String(16), nullable=True)
+    # Opt-in only — a tenant showing up in /api/marketplace is a deliberate
+    # choice, not a side-effect of finishing setup. Default tenant (id=1) is
+    # shown regardless of this flag, see list_marketplace() in main.py.
+    list_in_marketplace = Column(Boolean, default=False)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 class Profile(Base):

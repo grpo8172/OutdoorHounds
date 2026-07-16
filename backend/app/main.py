@@ -379,6 +379,30 @@ def get_config(tenant_slug: Optional[str] = Query(None), db: Session = Depends(g
     return _resolve_tenant(db, tenant_slug)
 
 
+@app.get("/api/marketplace", response_model=List[schemas.MarketplaceEntry])
+def list_marketplace(db: Session = Depends(get_db)):
+    """Public directory for the new landing page: the default tenant is
+    always shown (it's the platform's own showcase site), plus any tenant
+    that opted in via the 'List in marketplace' toggle in Owner Setup.
+    Tenants without a slug never appear even if opted in — nothing sane to
+    link to yet (still just the un-slugged default row mid-setup)."""
+    tenants = db.query(models.OwnerConfig).filter(
+        (models.OwnerConfig.id == DEFAULT_TENANT_ID) |
+        ((models.OwnerConfig.list_in_marketplace == True) & (models.OwnerConfig.slug.isnot(None)))
+    ).order_by(models.OwnerConfig.id).all()
+    return [
+        schemas.MarketplaceEntry(
+            business_name=t.business_name,
+            site_emoji=t.site_emoji,
+            tagline=t.tagline,
+            slug=t.slug,
+            brand_color=t.brand_color,
+            hero_photo=(t.hero_photos or [None])[0],
+        )
+        for t in tenants
+    ]
+
+
 @app.put("/api/config", response_model=schemas.OwnerConfigResponse)
 def update_config(update: schemas.OwnerConfigUpdate, db: Session = Depends(get_db), tenant: models.OwnerConfig = Depends(get_admin)):
     """Always operates on the tenant resolved from the admin's own auth

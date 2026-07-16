@@ -34,6 +34,7 @@ class OwnerConfigResponse(BaseModel):
     # link) — public/unauthenticated /api/config responses omit it via
     # get_config's own logic, see main.py.
     slug: Optional[str] = None
+    list_in_marketplace: bool = False
 
     class Config:
         from_attributes = True
@@ -50,6 +51,18 @@ class OwnerConfigUpdate(BaseModel):
     brand_color: Optional[str] = None
     banner_color: Optional[str] = None
     background_color: Optional[str] = None
+    list_in_marketplace: Optional[bool] = None
+
+# Public directory entry — deliberately a narrower shape than
+# OwnerConfigResponse (no admin_token-adjacent fields, no full mode_config)
+# since /api/marketplace is unauthenticated and lists OTHER tenants' info.
+class MarketplaceEntry(BaseModel):
+    business_name: str
+    site_emoji: str = "🐾"
+    tagline: str
+    slug: Optional[str] = None
+    brand_color: Optional[str] = "#e8843c"
+    hero_photo: Optional[str] = None
 
 class CatalogueItemBase(BaseModel):
     item_type: str

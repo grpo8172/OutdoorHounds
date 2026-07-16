@@ -84,9 +84,9 @@ export default function AdminLoginGate({ onLogin, onTryout }) {
   return (
     <div style={{ maxWidth: 400, margin: '6rem auto', padding: '2rem', border: '1px solid #e5e7eb', borderRadius: 12, textAlign: 'center' }}>
       <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
-      <h2 style={{ marginBottom: 6 }}>Admin access</h2>
+      <h2 style={{ marginBottom: 6 }}>Create your own app</h2>
       <p style={{ color: '#777', fontSize: '0.9rem', marginBottom: 24 }}>
-        Sign in with the Google account you used to purchase admin access.
+        Set up your own branded storefront and app for your business or community, then share the link with your customers. Already have admin access? Sign in below.
       </p>
 
       {/* Google sign-in */}

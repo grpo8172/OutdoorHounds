@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { getItems, getConfig, trackEvent } from '../../api/client'
 import { EnquiryModal } from './EnquiryModal'
 
@@ -147,6 +147,15 @@ export default function Storefront() {
   return (
     <div>
       {enquiryItem && <EnquiryModal item={enquiryItem} onClose={() => setEnquiryItem(null)} />}
+
+      {/* Sample callout — only on the platform's own default tenant (no
+          slug), so a real tenant's storefront never shows this about
+          itself. This is the top-of-page "you can build your own" nudge. */}
+      {!slug && (
+        <div className="banner" style={{ marginTop: 0, marginBottom: '1.5rem' }}>
+          🎉 <strong>This is a sample homepage.</strong> Anyone can create their own branded app and storefront like this one — <Link to="/setup" style={{ color: 'var(--accent)', fontWeight: 700 }}>set up your own business here</Link>.
+        </div>
+      )}
 
       {/* Hero */}
       <div

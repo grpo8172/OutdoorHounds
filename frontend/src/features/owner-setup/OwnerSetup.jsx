@@ -197,6 +197,7 @@ function OwnerSetupInner({ isTryout }) {
     brand_color: '#e8843c',
     banner_color: '',
     background_color: '',
+    list_in_marketplace: false,
   }))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -263,6 +264,7 @@ function OwnerSetupInner({ isTryout }) {
         brand_color: config.brand_color,
         banner_color: config.banner_color || null,
         background_color: config.background_color || null,
+        list_in_marketplace: config.list_in_marketplace,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -286,12 +288,33 @@ function OwnerSetupInner({ isTryout }) {
           </a>
         </div>
       )}
-      <h2 style={{ marginBottom: '0.25rem' }}>Owner Setup</h2>
+      <h2 style={{ marginBottom: '0.25rem' }}>Setup Your App</h2>
       <p style={{ color: '#777', marginBottom: '1.5rem' }}>
         Customise your site name, categories, and photos. Works for any community — not just pets.
       </p>
 
       <ShareableLink slug={config.slug} />
+
+      {/* Marketplace listing — opt-in only, and only meaningful once a
+          tenant has its own slug (the default/original site is always
+          shown on the marketplace regardless of this toggle). */}
+      {config.slug && (
+        <section style={sectionStyle}>
+          <h3 style={headingStyle}>App Marketplace listing</h3>
+          <p style={{ fontSize: '0.85rem', color: '#777', margin: '0 0 1rem' }}>
+            Show your business on the public App Marketplace page, where new visitors can discover it alongside other communities.
+          </p>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={!!config.list_in_marketplace}
+              onChange={e => setConfig({ ...config, list_in_marketplace: e.target.checked })}
+              style={{ width: 18, height: 18, accentColor: '#e8843c', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '0.9rem' }}>List my business in the marketplace</span>
+          </label>
+        </section>
+      )}
 
       {/* Business name */}
       <section style={sectionStyle}>

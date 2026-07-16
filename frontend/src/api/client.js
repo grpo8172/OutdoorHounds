@@ -69,6 +69,11 @@ export async function getConfig(tenantSlug) {
   return res.json();
 }
 
+export async function getMarketplace() {
+  const res = await fetch(`${BASE}/marketplace`);
+  return res.json();
+}
+
 // Authenticated equivalents — resolve to the logged-in admin's OWN tenant
 // via their token, used on /setup and /admin (which stay slug-less URLs).
 export async function getMyConfig() {
