@@ -60,12 +60,12 @@ export default function Marketplace() {
     <div>
       <div className="hero">
         <h1>App Marketplace</h1>
-        <p>Browse businesses running on this platform, or set up your own in minutes.</p>
+        <p>Browse businesses running on this platform, or set up your own app in minutes.</p>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
         <Link to="/setup" className="btn" style={{ textDecoration: 'none', display: 'inline-block' }}>
-          Set up your own business →
+          🚀 Setup Your App →
         </Link>
       </div>
 

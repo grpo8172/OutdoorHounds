@@ -10,8 +10,6 @@ import ItemDetail from './features/storefront/ItemDetail'
 import { getConfig, getAdminToken, getMyConfig } from './api/client'
 import './index.css'
 
-const MOBILE_APP_URL = import.meta.env.VITE_MOBILE_APP_URL || 'http://localhost:8081'
-
 // Every tenant's public site lives at /t/<slug> (root `/` stays the
 // original/default tenant, unchanged). /setup and /admin deliberately stay
 // slug-less — which tenant they operate on is resolved server-side from the
@@ -76,25 +74,20 @@ function AppInner() {
               which tenant a visitor or admin is actually viewing. */}
           <Link to="/">👀 Sample Homepage</Link>
           <Link to="/marketplace">🛍️ App Marketplace</Link>
-          <Link to="/chat">Ask Us</Link>
-          {/* /reset-tenant (not a bare link) for the default tenant — the
-              app persists whichever tenant was last joined on that device,
-              so a bare open would silently keep showing someone else's
-              community instead of landing back on this one. */}
-          <a href={`${MOBILE_APP_URL}${slug ? `/t/${slug}` : '/reset-tenant'}`} target="_blank" rel="noreferrer">📱 Open Your App</a>
 
           {/* Owner/admin tools grouped together at the end. */}
           {myHomeHref && (
-            <Link to={myHomeHref} style={{ background: 'rgba(255,255,255,0.32)', fontWeight: 700 }}>🏠 My Site</Link>
+            <Link to={myHomeHref} style={{ background: 'rgba(255,255,255,0.32)', fontWeight: 700 }}>🏠 My App</Link>
           )}
           <Link to="/setup" style={{ background: 'rgba(255,255,255,0.32)', fontWeight: 700 }}>🚀 Setup Your App</Link>
           <Link to="/admin">Admin</Link>
+          <Link to="/chat">Ask Us</Link>
         </div>
       </nav>
       {viewingSomeoneElse && (
         <div style={{ background: '#fff8e1', borderBottom: '3px solid #e8843c', padding: '0.6rem 1rem', textAlign: 'center', fontSize: '0.9rem', color: '#7a5a1a' }}>
           🔍 You're viewing <strong>{siteName}</strong>'s site — this isn't yours.{' '}
-          <Link to={myHomeHref} style={{ color: '#e8843c', fontWeight: 700 }}>Back to my site →</Link>
+          <Link to={myHomeHref} style={{ color: '#e8843c', fontWeight: 700 }}>Back to my app →</Link>
         </div>
       )}
       <main className="container">

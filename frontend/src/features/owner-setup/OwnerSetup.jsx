@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getMyConfig, updateConfig, uploadConfigPhotos, getAdminToken } from '../../api/client'
 import AdminLoginGate, { useAdminAuth } from '../admin-auth/AdminLoginGate'
+import PreviewModal from './PreviewModal'
 
 const DEFAULT_MODES = [
   { key: 'pet',                 active: true, emoji: '🐾', label: 'Adopt / Foster',   subtitle: 'Give a pet a loving home', image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&h=300&fit=crop' },
@@ -203,6 +204,7 @@ function OwnerSetupInner({ isTryout }) {
   const [saved, setSaved] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadingModeKey, setUploadingModeKey] = useState(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   useEffect(() => {
     getMyConfig().then(data => {
@@ -280,7 +282,7 @@ function OwnerSetupInner({ isTryout }) {
       {isTryout && (
         <div style={{ background: '#fff7f0', border: '1px solid #fcd9b6', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.875rem', color: '#92400e' }}>
-            👀 <strong>Preview mode</strong> — explore the settings but saving is locked.
+            👀 <strong>Trying it out</strong> — explore the settings and preview your app for free, but saving is locked.
           </span>
           <a href={`${MOBILE_APP_URL}/admin-subscribe`} target="_blank" rel="noreferrer"
             style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e8843c', textDecoration: 'none', whiteSpace: 'nowrap' }}>
@@ -289,9 +291,16 @@ function OwnerSetupInner({ isTryout }) {
         </div>
       )}
       <h2 style={{ marginBottom: '0.25rem' }}>Setup Your App</h2>
-      <p style={{ color: '#777', marginBottom: '1.5rem' }}>
+      <p style={{ color: '#777', marginBottom: '1rem' }}>
         Customise your site name, categories, and photos. Works for any community — not just pets.
       </p>
+
+      <button
+        onClick={() => setPreviewOpen(true)}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginBottom: '1.5rem', backgroundColor: '#fff', color: '#e8843c', border: '1.5px solid #e8843c', borderRadius: 8, padding: '0.55rem 1.1rem', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer' }}
+      >
+        👁️ Preview your app — free, no payment needed
+      </button>
 
       <ShareableLink slug={config.slug} />
 
@@ -540,6 +549,8 @@ function OwnerSetupInner({ isTryout }) {
         )}
         {saved && <span style={{ color: '#16a34a', fontWeight: 600 }}>✓ Saved — storefront updated</span>}
       </div>
+
+      {previewOpen && <PreviewModal config={config} onClose={() => setPreviewOpen(false)} />}
     </div>
   )
 }
