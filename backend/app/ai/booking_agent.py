@@ -3,6 +3,7 @@ from typing import Any, Dict
 
 from sqlalchemy.orm import Session
 
+from app.ai.scheduling_engine import resolve_booking
 from app.llm.factory import get_llm_provider
 from app.models import domain as models
 from app.policy.guardrails import validate_assistant_response
@@ -13,6 +14,12 @@ FALLBACK: Dict[str, Any] = {
     "ai_confidence": 0,
     "ai_reasoning": "AI scheduling unavailable — needs manual review.",
 }
+
+RELATIVE_DAY_VOCAB = (
+    "today, tomorrow, this_week, flexible, "
+    "this_monday, this_tuesday, this_wednesday, this_thursday, this_friday, this_saturday, this_sunday, "
+    "next_monday, next_tuesday, next_wednesday, next_thursday, next_friday, next_saturday, next_sunday"
+)
 
 
 def _booked_dates(db: Session, item_id: int, exclude_enquiry_id: int) -> list[str]:
@@ -35,10 +42,14 @@ def _booked_dates(db: Session, item_id: int, exclude_enquiry_id: int) -> list[st
 
 
 def propose_booking(db: Session, enquiry: models.Enquiry, item: models.CatalogueItem) -> Dict[str, Any]:
-    """Ask the AI to propose a date/time for this enquiry, avoiding conflicts
-    with the listing's other approved/proposed bookings. Never raises —
-    falls back to a manual-review result if the LLM is unavailable, down, or
-    returns something unusable, so enquiry creation never breaks."""
+    """The LLM extracts scheduling intent from the customer's free-text
+    message (what it's good at); a deterministic scheduling engine
+    (app.ai.scheduling_engine) turns that intent into an actual date/time and
+    resolves conflicts (what code is good at — an LLM asked to compute
+    "next Wednesday" directly gave inconsistent answers for near-identical
+    requests, confirmed empirically). Never raises — falls back to a
+    manual-review result if the LLM is unavailable or returns something
+    unusable, so enquiry creation never breaks."""
     today = datetime.date.today()
     booked = _booked_dates(db, item.id, enquiry.id)
 
@@ -48,15 +59,15 @@ Today's date is {today.isoformat()}.
 
 A customer submitted this enquiry for the listing "{item.name}" ({item.item_type}): "{enquiry.message}"
 
-Dates already booked or proposed for this same listing: {booked or "none"}.
-
-Propose the best available date and time for this booking. Prefer a date the
-customer explicitly mentioned in their message if one is present and not
-already taken; otherwise propose the soonest reasonable available date.
-Never propose a date that is already booked/proposed or in the past.
+Extract their scheduling intent — do NOT compute an actual calendar date yourself, just describe what they asked for:
+- explicit_date: an ISO "YYYY-MM-DD" date ONLY if the customer stated a specific calendar date (e.g. "August 15th"). Otherwise null.
+- relative_day: one of [{RELATIVE_DAY_VOCAB}] if the customer referred to a day relatively (e.g. "next Wednesday" -> "next_wednesday", "this coming Saturday" -> "this_saturday"). Otherwise null.
+- time_of_day: one of [morning, lunchtime, afternoon, evening, night] if implied. Otherwise null.
+- explicit_time: an exact "HH:MM" ONLY if the customer stated a specific time. Otherwise null.
+- reasoning: one sentence describing what the customer asked for and why.
 
 Respond with ONLY a JSON object of this exact shape:
-{{"proposed_date": "YYYY-MM-DD", "proposed_time": "HH:MM", "confidence": <integer 0-100>, "reasoning": "<one sentence explaining the choice>"}}
+{{"explicit_date": "YYYY-MM-DD or null", "relative_day": "one of the vocab words or null", "time_of_day": "one of the vocab words or null", "explicit_time": "HH:MM or null", "reasoning": "<one sentence>"}}
 """
 
     try:
@@ -64,26 +75,27 @@ Respond with ONLY a JSON object of this exact shape:
     except Exception:
         return dict(FALLBACK)
 
-    proposed_date = result.get("proposed_date")
-    if not proposed_date or proposed_date in booked or proposed_date < today.isoformat():
+    resolution = resolve_booking(
+        explicit_date=result.get("explicit_date"),
+        relative_day=result.get("relative_day"),
+        time_of_day=result.get("time_of_day"),
+        explicit_time=result.get("explicit_time"),
+        today=today,
+        booked_dates=set(booked),
+    )
+
+    if not resolution["proposed_date"]:
         return dict(FALLBACK)
 
     reasoning = str(result.get("reasoning") or "")[:500]
     if not reasoning or not validate_assistant_response(reasoning):
         reasoning = "Proposed based on listing availability."
-
-    try:
-        confidence = max(0, min(100, int(result.get("confidence", 0))))
-    except (TypeError, ValueError):
-        confidence = 0
-
-    proposed_time = result.get("proposed_time")
-    if not isinstance(proposed_time, str) or len(proposed_time) > 5:
-        proposed_time = None
+    if resolution["shifted_due_to_conflict"]:
+        reasoning += " The customer's originally requested date was already booked, so the next available date was chosen instead."
 
     return {
-        "proposed_date": proposed_date,
-        "proposed_time": proposed_time,
-        "ai_confidence": confidence,
+        "proposed_date": resolution["proposed_date"],
+        "proposed_time": resolution["proposed_time"],
+        "ai_confidence": resolution["confidence"],
         "ai_reasoning": reasoning,
     }

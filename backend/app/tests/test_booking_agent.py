@@ -35,14 +35,18 @@ def test_propose_booking_falls_back_when_llm_unavailable(monkeypatch):
     assert "manual review" in result["ai_reasoning"].lower()
 
 
-def test_propose_booking_rejects_already_booked_dates(monkeypatch):
-    # Even if a provider proposes a date, the agent must not hand back a
-    # date that's already booked/proposed for the same listing.
-    from app import llm as llm_pkg
-
+def test_propose_booking_shifts_past_already_booked_dates(monkeypatch):
+    # The LLM only extracts intent now (explicit_date/relative_day/etc.) —
+    # the deterministic scheduling engine (app.ai.scheduling_engine) is what
+    # actually resolves conflicts, by shifting forward to the next free day
+    # rather than giving up outright.
     class FakeProvider:
         def generate_json(self, prompt):
-            return {"proposed_date": "2026-08-01", "proposed_time": "10:00", "confidence": 90, "reasoning": "Customer asked for this date."}
+            return {
+                "explicit_date": "2026-08-01", "relative_day": None,
+                "time_of_day": None, "explicit_time": "10:00",
+                "reasoning": "Customer asked for this exact date.",
+            }
 
     monkeypatch.setattr("app.ai.booking_agent.get_llm_provider", lambda: FakeProvider())
 
@@ -63,4 +67,5 @@ def test_propose_booking_rejects_already_booked_dates(monkeypatch):
 
     result = propose_booking(db, enquiry, item)
 
-    assert result["proposed_date"] is None
+    assert result["proposed_date"] == "2026-08-02"
+    assert "already booked" in result["ai_reasoning"].lower()
