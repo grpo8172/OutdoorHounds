@@ -43,10 +43,21 @@ class Enquiry(Base):
     user_id = Column(Integer, nullable=True)
     item_id = Column(Integer)
     message = Column(Text)
+    # pending -> ai_proposed (agent found a slot) -> approved/rejected (owner
+    # decided). Stays "pending" if the agent couldn't propose anything, so
+    # the pre-agent manual-scheduling path still works unchanged.
     status = Column(String(32), default="pending")
     booking_date = Column(String(10), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     tenant_id = Column(Integer, nullable=True, index=True)
+    # The booking agent's proposal, written once at enquiry creation (and
+    # again if the owner asks it to re-propose). Never used to auto-confirm —
+    # decide_enquiry() only copies proposed_date into booking_date once the
+    # owner explicitly approves.
+    proposed_date = Column(String(10), nullable=True)
+    proposed_time = Column(String(5), nullable=True)
+    ai_confidence = Column(Integer, nullable=True)
+    ai_reasoning = Column(Text, nullable=True)
 
 class AssistantRule(Base):
     __tablename__ = "web_assistant_rules"

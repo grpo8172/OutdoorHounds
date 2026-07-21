@@ -98,6 +98,10 @@ class EnquiryResponse(EnquiryBase):
     status: str
     booking_date: Optional[str] = None
     created_at: datetime
+    proposed_date: Optional[str] = None
+    proposed_time: Optional[str] = None
+    ai_confidence: Optional[int] = None
+    ai_reasoning: Optional[str] = None
 
     class Config:
         from_attributes = True

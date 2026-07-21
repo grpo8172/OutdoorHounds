@@ -21,6 +21,9 @@ def test_mock_llm_returns_setup_fixture():
     assert "suggested_items" in result
 
 
-def test_factory_defaults_to_mock():
+def test_factory_defaults_to_mock(monkeypatch):
+    # Isolated from whatever LLM_ENABLED/GEMINI_API_KEY happen to be set in
+    # the local .env — this asserts the factory's actual fallback behavior.
+    monkeypatch.setenv("LLM_ENABLED", "false")
     provider = get_llm_provider()
     assert isinstance(provider, MockLLMProvider)

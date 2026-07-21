@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { getAuditEvents, getPendingItems, approveItem, getEnquiries, decideEnquiry, getMyItems, getMyConfig, addListing, uploadConfigPhotos } from '../../api/client'
+import { getAuditEvents, getPendingItems, approveItem, getEnquiries, decideEnquiry, reproposeEnquiry, getMyItems, getMyConfig, addListing, uploadConfigPhotos } from '../../api/client'
 import AdminLoginGate, { useAdminAuth } from '../admin-auth/AdminLoginGate'
 
 const TYPE_LABELS = {
@@ -24,14 +24,17 @@ function Calendar({ bookings, items }) {
 
   const byDay = useMemo(() => {
     const map = {}
-    bookings.filter(b => b.status === 'approved' && b.booking_date).forEach(b => {
-      const d = new Date(b.booking_date + 'T00:00:00')
-      if (d.getFullYear() === year && d.getMonth() === month) {
-        const day = d.getDate()
-        if (!map[day]) map[day] = []
-        map[day].push(b)
-      }
-    })
+    bookings
+      .map(b => ({ ...b, _date: b.status === 'approved' ? b.booking_date : b.proposed_date }))
+      .filter(b => (b.status === 'approved' || b.status === 'ai_proposed') && b._date)
+      .forEach(b => {
+        const d = new Date(b._date + 'T00:00:00')
+        if (d.getFullYear() === year && d.getMonth() === month) {
+          const day = d.getDate()
+          if (!map[day]) map[day] = []
+          map[day].push(b)
+        }
+      })
     return map
   }, [bookings, year, month])
 
@@ -87,9 +90,15 @@ function Calendar({ bookings, items }) {
                 <>
                   <div style={{ fontSize: '0.78rem', fontWeight: isToday(day) ? 700 : 500, color: isToday(day) ? '#e8843c' : '#374151', marginBottom: 3 }}>{day}</div>
                   {dayBookings.map(b => (
-                    <div key={b.id} style={{ fontSize: '0.65rem', background: '#e8843c', color: '#fff', borderRadius: 4, padding: '1px 4px', marginBottom: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
-                      title={itemMap[b.item_id]?.name || b.message}>
-                      {itemMap[b.item_id]?.name || `#${b.id}`}
+                    <div key={b.id} style={{
+                      fontSize: '0.65rem',
+                      background: b.status === 'ai_proposed' ? '#fde4cc' : '#e8843c',
+                      color: b.status === 'ai_proposed' ? '#92400e' : '#fff',
+                      border: b.status === 'ai_proposed' ? '1px dashed #e8843c' : 'none',
+                      borderRadius: 4, padding: '1px 4px', marginBottom: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                    }}
+                      title={`${itemMap[b.item_id]?.name || b.message}${b.status === 'ai_proposed' ? ' — AI proposed, awaiting approval' : ''}`}>
+                      {b.status === 'ai_proposed' ? '🤖 ' : ''}{itemMap[b.item_id]?.name || `#${b.id}`}
                     </div>
                   ))}
                 </>
@@ -107,6 +116,11 @@ function Calendar({ bookings, items }) {
             <div key={b.id} style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #fde4cc' }}>
               <div style={{ fontWeight: 600 }}>{itemMap[b.item_id]?.name || 'Listing'}</div>
               <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: 2 }}>{b.message}</div>
+              {b.status === 'ai_proposed' && (
+                <div style={{ fontSize: '0.78rem', color: '#92400e', marginTop: 4 }}>
+                  🤖 AI proposed — awaiting your approval {typeof b.ai_confidence === 'number' ? `(${b.ai_confidence}% confidence)` : ''}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -118,7 +132,7 @@ function Calendar({ bookings, items }) {
 // ── Approve modal ─────────────────────────────────────────────────────────────
 
 function ApproveModal({ enquiry, itemName, onConfirm, onCancel }) {
-  const [date, setDate] = useState('')
+  const [date, setDate] = useState(enquiry.proposed_date || '')
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div style={{ background: '#fff', borderRadius: 16, padding: '1.5rem', maxWidth: 400, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
@@ -126,8 +140,15 @@ function ApproveModal({ enquiry, itemName, onConfirm, onCancel }) {
         <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: '0 0 1rem' }}>
           <strong>{itemName}</strong><br />"{enquiry.message}"
         </p>
+        {enquiry.proposed_date && (
+          <div style={{ background: '#fff7f0', border: '1px solid #fcd9b6', borderRadius: 10, padding: '0.6rem 0.75rem', marginBottom: '1rem', fontSize: '0.82rem', color: '#92400e' }}>
+            🤖 AI proposed <strong>{enquiry.proposed_date}{enquiry.proposed_time ? ` at ${enquiry.proposed_time}` : ''}</strong>
+            {typeof enquiry.ai_confidence === 'number' && ` (${enquiry.ai_confidence}% confidence)`}
+            {enquiry.ai_reasoning && <div style={{ marginTop: 3, fontStyle: 'italic' }}>{enquiry.ai_reasoning}</div>}
+          </div>
+        )}
         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>
-          Booking date (optional)
+          Booking date {enquiry.proposed_date ? '(override AI proposal if needed)' : '(optional)'}
         </label>
         <input type="date" value={date} onChange={e => setDate(e.target.value)}
           style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.95rem', boxSizing: 'border-box', marginBottom: '1rem' }} />
@@ -147,6 +168,7 @@ const EVENT_LABELS = {
   enquiry_intent:    { label: 'Enquiry button clicked', emoji: '💬' },
   enquiry_submitted: { label: 'Enquiry sent', emoji: '✉️' },
   enquiry_created:   { label: 'Enquiry received', emoji: '📥' },
+  ai_booking_proposed: { label: 'AI proposed a booking', emoji: '🤖' },
   enquiry_decided:   { label: 'Enquiry decided', emoji: '✅' },
   item_viewed:       { label: 'Listing viewed', emoji: '🔍' },
   item_proposed:     { label: 'Listing submitted', emoji: '📝' },
@@ -343,7 +365,7 @@ function AdminDashboardInner({ onLogout, isTryout }) {
   }
 
   const approveEnquiry = async (id, bookingDate) => {
-    await decideEnquiry(id, true)
+    await decideEnquiry(id, true, bookingDate)
     setApproveTarget(null)
     load()
   }
@@ -353,15 +375,25 @@ function AdminDashboardInner({ onLogout, isTryout }) {
     load()
   }
 
+  const reproposeAndReload = async (id) => {
+    await reproposeEnquiry(id)
+    load()
+  }
+
   const allItems = [...pending, ...published]
   const itemMap = Object.fromEntries(allItems.map(i => [i.id, i]))
+  // "pending" here means the AI agent had no proposal (e.g. GCP not
+  // configured yet) — everything the agent could handle already moved to
+  // ai_proposed, so this bucket is the manual-scheduling fallback path.
   const pendingEnquiries = enquiries.filter(e => e.status === 'pending')
+  const aiProposedEnquiries = enquiries.filter(e => e.status === 'ai_proposed')
   const approvedBookings = enquiries.filter(e => e.status === 'approved')
+  const needsAttentionCount = pendingEnquiries.length + aiProposedEnquiries.length
 
   const TABS = [
     { id: 'listings', label: `Listings${pending.length ? ` (${pending.length} pending)` : ''}` },
     { id: 'add', label: '+ Add Listing' },
-    { id: 'enquiries', label: `Enquiries${pendingEnquiries.length ? ` (${pendingEnquiries.length})` : ''}` },
+    { id: 'enquiries', label: `Enquiries${needsAttentionCount ? ` (${needsAttentionCount})` : ''}` },
     { id: 'calendar', label: 'Calendar' },
     { id: 'activity', label: `Activity${events.length ? ` (${events.length})` : ''}` },
   ]
@@ -396,7 +428,8 @@ function AdminDashboardInner({ onLogout, isTryout }) {
         {[
           { label: 'Published', value: published.length, color: '#16a34a' },
           { label: 'Pending listings', value: pending.length, color: '#e8843c' },
-          { label: 'Pending enquiries', value: pendingEnquiries.length, color: '#7b5ea7' },
+          { label: 'AI proposed', value: aiProposedEnquiries.length, color: '#92400e' },
+          { label: 'Needs manual review', value: pendingEnquiries.length, color: '#7b5ea7' },
           { label: 'Approved bookings', value: approvedBookings.length, color: '#0ea5e9' },
         ].map(s => (
           <div key={s.label} style={{ flex: '1 1 120px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '0.9rem 1rem' }}>
@@ -483,13 +516,43 @@ function AdminDashboardInner({ onLogout, isTryout }) {
       {/* ── Enquiries tab ── */}
       {tab === 'enquiries' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {pendingEnquiries.length === 0 && approvedBookings.length === 0 && (
+          {pendingEnquiries.length === 0 && aiProposedEnquiries.length === 0 && approvedBookings.length === 0 && (
             <p style={{ color: '#9ca3af' }}>No enquiries yet.</p>
+          )}
+
+          {aiProposedEnquiries.length > 0 && (
+            <>
+              <h3 style={sectionHead}>🤖 AI Proposed — Awaiting Your Approval</h3>
+              {aiProposedEnquiries.map(e => (
+                <div key={e.id} style={{ ...enquiryCard, borderColor: '#fcd9b6', background: '#fffaf5' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{itemMap[e.item_id]?.name || `Listing #${e.item_id}`}</div>
+                    <div style={{ fontSize: '0.85rem', color: '#374151', margin: '0.3rem 0' }}>"{e.message}"</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#92400e' }}>
+                      📅 {e.proposed_date}{e.proposed_time ? ` at ${e.proposed_time}` : ''}
+                      {typeof e.ai_confidence === 'number' && ` · ${e.ai_confidence}% confidence`}
+                    </div>
+                    {e.ai_reasoning && <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: 2, fontStyle: 'italic' }}>{e.ai_reasoning}</div>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'flex-start' }}>
+                    {isTryout ? (
+                      <LockedButton label="Approve" />
+                    ) : (
+                      <>
+                        <button className="btn" style={{ background: '#e8843c', fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={() => setApproveTarget(e)}>Approve</button>
+                        <button className="btn btn--outline" style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={() => reproposeAndReload(e.id)}>Re-run AI</button>
+                        <button className="btn btn--outline" style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', color: '#dc2626', borderColor: '#dc2626' }} onClick={() => rejectEnquiry(e.id)}>Decline</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </>
           )}
 
           {pendingEnquiries.length > 0 && (
             <>
-              <h3 style={sectionHead}>Needs a Response</h3>
+              <h3 style={{ ...sectionHead, marginTop: aiProposedEnquiries.length ? '1.5rem' : 0 }}>Needs Manual Review</h3>
               {pendingEnquiries.map(e => (
                 <div key={e.id} style={enquiryCard}>
                   <div style={{ flex: 1 }}>
@@ -514,7 +577,7 @@ function AdminDashboardInner({ onLogout, isTryout }) {
 
           {approvedBookings.length > 0 && (
             <>
-              <h3 style={{ ...sectionHead, marginTop: pendingEnquiries.length ? '1.5rem' : 0 }}>Approved Bookings</h3>
+              <h3 style={{ ...sectionHead, marginTop: (pendingEnquiries.length || aiProposedEnquiries.length) ? '1.5rem' : 0 }}>Approved Bookings</h3>
               {approvedBookings.map(e => (
                 <div key={e.id} style={{ ...enquiryCard, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
                   <div style={{ flex: 1 }}>
@@ -537,9 +600,9 @@ function AdminDashboardInner({ onLogout, isTryout }) {
       {/* ── Calendar tab ── */}
       {tab === 'calendar' && (
         <div>
-          {approvedBookings.filter(b => b.booking_date).length === 0 && (
+          {approvedBookings.filter(b => b.booking_date).length === 0 && aiProposedEnquiries.length === 0 && (
             <div className="banner" style={{ marginBottom: '1.25rem' }}>
-              No bookings have a date yet. Approve an enquiry and set a date to see it here.
+              No bookings yet. The AI proposes a date as soon as a customer sends an enquiry — dashed 🤖 entries are awaiting your approval.
             </div>
           )}
           <Calendar bookings={enquiries} items={allItems} />

@@ -15,8 +15,29 @@ from app.models import domain as models
 from app.schemas import domain as schemas
 from app.llm.factory import get_llm_provider, LLMProvider
 from app.policy.guardrails import require_approval, validate_assistant_response
+from app.ai.booking_agent import propose_booking
 
 Base.metadata.create_all(bind=engine)
+
+# create_all() only creates missing tables — it never alters an existing
+# one, so new columns added to a model (like the booking-agent fields on
+# Enquiry) need to be added by hand to whatever DB is already deployed.
+def _add_missing_columns() -> None:
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine)
+    existing = {c["name"] for c in inspector.get_columns("web_enquiries")}
+    new_columns = {
+        "proposed_date": "VARCHAR(10)",
+        "proposed_time": "VARCHAR(5)",
+        "ai_confidence": "INTEGER",
+        "ai_reasoning": "TEXT",
+    }
+    with engine.begin() as conn:
+        for name, coltype in new_columns.items():
+            if name not in existing:
+                conn.execute(text(f"ALTER TABLE web_enquiries ADD COLUMN {name} {coltype}"))
+
+_add_missing_columns()
 
 # Fail loudly at startup if critical secrets are missing.
 _admin_pw = os.environ.get("ADMIN_PASSWORD", "")
@@ -308,15 +329,65 @@ def create_enquiry(enquiry: schemas.EnquiryCreate, db: Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="Listing not found")
     db_enquiry = models.Enquiry(item_id=enquiry.item_id, message=enquiry.message, status="pending", tenant_id=item.tenant_id)
     db.add(db_enquiry)
-    _log(db, "enquiry_created", f"Enquiry created for item {enquiry.item_id} (pending owner review).", tenant_id=item.tenant_id)
+    db.commit()
+    db.refresh(db_enquiry)
+
+    # The booking agent runs immediately, before the owner ever sees this
+    # enquiry — it's what makes this an AI-operated queue rather than an AI
+    # suggestion the owner has to ask for. It only ever proposes; the owner
+    # still has to approve before anything is confirmed (decide_enquiry()).
+    proposal = propose_booking(db, db_enquiry, item)
+    db_enquiry.proposed_date = proposal["proposed_date"]
+    db_enquiry.proposed_time = proposal["proposed_time"]
+    db_enquiry.ai_confidence = proposal["ai_confidence"]
+    db_enquiry.ai_reasoning = proposal["ai_reasoning"]
+    if proposal["proposed_date"]:
+        db_enquiry.status = "ai_proposed"
+        _log(db, "ai_booking_proposed",
+             f"AI proposed {proposal['proposed_date']} for enquiry {db_enquiry.id} (confidence {proposal['ai_confidence']}%): {proposal['ai_reasoning']}",
+             tenant_id=item.tenant_id)
+    else:
+        _log(db, "enquiry_created", f"Enquiry created for item {enquiry.item_id} (pending owner review).", tenant_id=item.tenant_id)
     db.commit()
     db.refresh(db_enquiry)
     return db_enquiry
 
 
+@app.post("/api/enquiries/{enquiry_id}/propose", response_model=schemas.EnquiryResponse)
+def repropose_enquiry(enquiry_id: int, db: Session = Depends(get_db), tenant: models.OwnerConfig = Depends(get_admin)):
+    """Owner asks the agent to re-run its scheduling proposal (e.g. after a
+    conflicting booking was approved elsewhere). Scoped to the admin's own tenant."""
+    enquiry = db.query(models.Enquiry).filter(
+        models.Enquiry.id == enquiry_id,
+        models.Enquiry.tenant_id == tenant.id,
+    ).first()
+    if not enquiry:
+        raise HTTPException(status_code=404, detail="Enquiry not found")
+    item = db.query(models.CatalogueItem).filter(models.CatalogueItem.id == enquiry.item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    proposal = propose_booking(db, enquiry, item)
+    enquiry.proposed_date = proposal["proposed_date"]
+    enquiry.proposed_time = proposal["proposed_time"]
+    enquiry.ai_confidence = proposal["ai_confidence"]
+    enquiry.ai_reasoning = proposal["ai_reasoning"]
+    if proposal["proposed_date"] and enquiry.status == "pending":
+        enquiry.status = "ai_proposed"
+    _log(db, "ai_booking_proposed",
+         f"AI re-proposed {proposal['proposed_date']} for enquiry {enquiry_id} (confidence {proposal['ai_confidence']}%): {proposal['ai_reasoning']}",
+         tenant_id=tenant.id)
+    db.commit()
+    db.refresh(enquiry)
+    return enquiry
+
+
 @app.post("/api/enquiries/{enquiry_id}/decide")
 def decide_enquiry(enquiry_id: int, approve: bool, booking_date: Optional[str] = None, db: Session = Depends(get_db), tenant: models.OwnerConfig = Depends(get_admin)):
-    """Owner decision on an adoption/booking/sitting enquiry. Scoped to the admin's own tenant."""
+    """Owner's final approval on an adoption/booking/sitting enquiry — this is
+    the one required human-in-the-loop step; the agent only ever proposes.
+    Scoped to the admin's own tenant. `booking_date`, if omitted, falls back
+    to the agent's proposed_date so the owner can approve-as-is with one click."""
     enquiry = db.query(models.Enquiry).filter(
         models.Enquiry.id == enquiry_id,
         models.Enquiry.tenant_id == tenant.id,
@@ -324,8 +395,8 @@ def decide_enquiry(enquiry_id: int, approve: bool, booking_date: Optional[str] =
     if not enquiry:
         raise HTTPException(status_code=404, detail="Enquiry not found")
     enquiry.status = "approved" if approve else "rejected"
-    if approve and booking_date:
-        enquiry.booking_date = booking_date
+    if approve:
+        enquiry.booking_date = booking_date or enquiry.proposed_date
     _log(db, "enquiry_decided", f"Enquiry {enquiry_id} {enquiry.status} by owner.", tenant_id=tenant.id)
     db.commit()
     return {"status": enquiry.status, "enquiry_id": enquiry_id}

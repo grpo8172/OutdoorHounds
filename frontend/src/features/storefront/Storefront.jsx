@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { getItems, getConfig, trackEvent } from '../../api/client'
 import { EnquiryModal } from './EnquiryModal'
 
@@ -153,7 +153,7 @@ export default function Storefront() {
           itself. This is the top-of-page "you can build your own" nudge. */}
       {!slug && (
         <div className="banner" style={{ marginTop: 0, marginBottom: '1.5rem' }}>
-          🎉 <strong>This is a sample homepage.</strong> Anyone can create their own branded app and storefront like this one — <Link to="/setup" style={{ color: 'var(--accent)', fontWeight: 700 }}>Setup Your App</Link>, free to preview before you pay.
+          🎉 <strong>This is a sample homepage.</strong> Anyone can create their own branded app and storefront like this one, free to preview before you pay.
         </div>
       )}
 

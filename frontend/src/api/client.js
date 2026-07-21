@@ -155,8 +155,15 @@ export async function getEnquiries() {
   return res.json()
 }
 
-export async function decideEnquiry(id, approve) {
-  const res = await fetch(`${BASE}/enquiries/${id}/decide?approve=${approve}`, { method: 'POST', headers: adminHeaders() })
+export async function decideEnquiry(id, approve, bookingDate) {
+  const dateParam = bookingDate ? `&booking_date=${encodeURIComponent(bookingDate)}` : ''
+  const res = await fetch(`${BASE}/enquiries/${id}/decide?approve=${approve}${dateParam}`, { method: 'POST', headers: adminHeaders() })
+  if (res.status === 401) throw new Error('UNAUTHORIZED')
+  return res.json()
+}
+
+export async function reproposeEnquiry(id) {
+  const res = await fetch(`${BASE}/enquiries/${id}/propose`, { method: 'POST', headers: adminHeaders() })
   if (res.status === 401) throw new Error('UNAUTHORIZED')
   return res.json()
 }

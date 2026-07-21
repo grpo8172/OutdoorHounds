@@ -11,9 +11,11 @@ services:
       - web-uploads-data:/app/web-uploads
     environment:
       DATABASE_URL: mysql+pymysql://app:apppassword@db:3306/outdoor_hounds
-      LLM_ENABLED: "false"
-      LLM_PROVIDER: mock
-      LLM_MODEL: mock-model-v1
+      LLM_ENABLED: ${LLM_ENABLED:-false}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      HF_API_TOKEN: ${HF_API_TOKEN:-}
+      HF_MODEL: ${HF_MODEL:-google/gemma-3-4b-it}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set in .env}
     depends_on:
       db:
