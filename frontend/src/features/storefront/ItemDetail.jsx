@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getItem, trackEvent } from '../../api/client'
+import { getItem, getConfig, trackEvent } from '../../api/client'
 import { EnquiryModal } from './EnquiryModal'
 
 const TYPE_LABEL = {
@@ -17,6 +17,7 @@ export default function ItemDetail() {
   const { id, slug } = useParams()
   const homeHref = slug ? `/t/${slug}` : '/'
   const [item, setItem] = useState(null)
+  const [config, setConfig] = useState(null)
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -26,6 +27,7 @@ export default function ItemDetail() {
       setLoading(false)
       if (data) trackEvent('item_viewed', `Item ${data.id}: ${data.name}`, slug)
     }).catch(() => setLoading(false))
+    getConfig(slug).then(setConfig).catch(() => setConfig(null))
   }, [id, slug])
 
   const handleEnquire = () => {
@@ -47,6 +49,7 @@ export default function ItemDetail() {
   }
 
   const m = item.listing_meta || {}
+  const modeConfig = (config?.mode_config ?? []).find(mode => mode.key === item.item_type)
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '1.5rem' }}>
@@ -65,7 +68,7 @@ export default function ItemDetail() {
 
       <div style={{ marginTop: '1rem' }}>
         <span className={`tag ${item.item_type}`} style={{ fontSize: '0.8rem' }}>
-          {TYPE_LABEL[item.item_type] || item.item_type}
+          {modeConfig?.label || TYPE_LABEL[item.item_type] || item.item_type}
         </span>
         <h2 style={{ margin: '0.5rem 0', fontSize: '1.75rem' }}>{item.name}</h2>
 
@@ -90,7 +93,7 @@ export default function ItemDetail() {
           onClick={handleEnquire}
           style={{ marginTop: '1.5rem', backgroundColor: 'var(--accent)', color: '#fff', border: 'none' }}
         >
-          Enquire about this listing
+          {item.cta_label || modeConfig?.cta_label || 'Enquire about this listing'}
         </button>
       </div>
     </div>

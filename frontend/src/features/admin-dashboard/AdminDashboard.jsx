@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, createContext, useContext } from 'react'
-import { getAuditEvents, getPendingItems, approveItem, getEnquiries, decideEnquiry, reproposeEnquiry, getMyItems, getMyConfig, addListing, uploadConfigPhotos } from '../../api/client'
+import { getAuditEvents, getPendingItems, approveItem, getEnquiries, decideEnquiry, reproposeEnquiry, getMyItems, getMyConfig, addListing, updateListing, uploadConfigPhotos } from '../../api/client'
 import AdminLoginGate, { useAdminAuth } from '../admin-auth/AdminLoginGate'
 
 const TYPE_LABELS = {
@@ -248,7 +248,7 @@ function ShareableLink({ slug }) {
   )
 }
 
-const EMPTY_LISTING = { item_type: 'pet', name: '', description: '', price: '', image_url: '' }
+const EMPTY_LISTING = { item_type: 'pet', name: '', description: '', price: '', image_url: '', cta_label: '' }
 
 // Lets a new tenant (whose site starts empty — the mobile app has no
 // concept of which tenant a listing belongs to yet) populate their own
@@ -301,6 +301,7 @@ function AddListingForm({ onAdded, modeConfig }) {
         description: form.description.trim(),
         price: form.price.trim() || null,
         image_url: form.image_url.trim() || null,
+        cta_label: form.cta_label.trim() || null,
       })
       setForm({ ...EMPTY_LISTING, item_type: categories[0]?.key || 'pet' })
       onAdded()
@@ -334,6 +335,12 @@ function AddListingForm({ onAdded, modeConfig }) {
         <input value={form.price} onChange={set('price')} placeholder="e.g. Free, $25/walk"
           style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box' }} />
       </div>
+      <div>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Button text (optional)</label>
+        <input value={form.cta_label} onChange={set('cta_label')} placeholder={categories.find(c => c.key === form.item_type)?.cta_label || 'Enquire'}
+          style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+        <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '0.3rem 0 0' }}>Leave blank to use this category's default button text — just this listing.</p>
+      </div>
 
       <div>
         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Photo (optional)</label>
@@ -365,6 +372,127 @@ function AddListingForm({ onAdded, modeConfig }) {
   )
 }
 
+// Edits a single existing listing (pending or published) — the only place
+// an admin can change a listing after it's been added, including overriding
+// its button text without renaming the whole category.
+function EditListingModal({ item, modeConfig, onSaved, onCancel }) {
+  const brandColor = useContext(BrandColorContext)
+  const categories = modeConfig?.length
+    ? modeConfig.filter(m => m.active || m.key === item.item_type)
+    : Object.entries(TYPE_LABELS).map(([key, label]) => ({ key, label }))
+  const [form, setForm] = useState({
+    item_type: item.item_type,
+    name: item.name || '',
+    description: item.description || '',
+    price: item.price || '',
+    image_url: item.image_url || '',
+    cta_label: item.cta_label || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState(null)
+
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }))
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setError(null)
+    try {
+      const { urls } = await uploadConfigPhotos([file])
+      if (urls?.[0]) setForm(f => ({ ...f, image_url: urls[0] }))
+    } catch {
+      setError('Could not upload the photo. Please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (!form.name.trim() || !form.description.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      await updateListing(item.id, {
+        item_type: form.item_type,
+        name: form.name.trim(),
+        description: form.description.trim(),
+        price: form.price.trim() || null,
+        image_url: form.image_url.trim() || null,
+        cta_label: form.cta_label.trim() || null,
+      })
+      onSaved()
+    } catch {
+      setError('Could not save this listing. Please try again.')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+      <form onSubmit={submit} style={{ background: '#fff', borderRadius: 16, padding: '1.5rem', maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+        <h3 style={{ margin: 0 }}>Edit listing</h3>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Category</label>
+          <select value={form.item_type} onChange={set('item_type')} style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem' }}>
+            {categories.map(({ key, label, emoji }) => <option key={key} value={key}>{emoji ? `${emoji} ` : ''}{label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Title *</label>
+          <input value={form.name} onChange={set('name')}
+            style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Description *</label>
+          <textarea value={form.description} onChange={set('description')} rows={3}
+            style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box', resize: 'vertical' }} />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Price (optional)</label>
+          <input value={form.price} onChange={set('price')} placeholder="e.g. Free, $25/walk"
+            style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Button text (optional)</label>
+          <input value={form.cta_label} onChange={set('cta_label')} placeholder={categories.find(c => c.key === form.item_type)?.cta_label || 'Enquire'}
+            style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+          <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '0.3rem 0 0' }}>Leave blank to use this category's default button text — just this listing.</p>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Photo (optional)</label>
+          {form.image_url && (
+            <div style={{ position: 'relative', display: 'inline-block', marginBottom: '0.6rem' }}>
+              <img src={form.image_url} alt="" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid #ddd' }} />
+              <button type="button" onClick={() => setForm(f => ({ ...f, image_url: '' }))}
+                style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: '20px', textAlign: 'center' }}>✕</button>
+            </div>
+          )}
+          {!form.image_url && (
+            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, border: '2px dashed #ddd', borderRadius: 12, padding: '1rem', cursor: uploading ? 'default' : 'pointer', color: '#aaa', marginBottom: '0.6rem' }}>
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} disabled={uploading} />
+              {uploading ? <span>Uploading…</span> : <>
+                <span style={{ fontSize: 22 }}>📸</span>
+                <span style={{ color: brandColor, fontWeight: 600, fontSize: '0.85rem' }}>Upload a photo</span>
+              </>}
+            </label>
+          )}
+        </div>
+        {error && <p style={{ color: '#dc2626', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button type="submit" disabled={saving || !form.name.trim() || !form.description.trim()} className="btn"
+            style={{ flex: 1, background: brandColor, opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Saving…' : 'Save changes'}
+          </button>
+          <button type="button" className="btn btn--outline" style={{ flex: 1 }} onClick={onCancel} disabled={saving}>Cancel</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 function AdminDashboardInner({ onLogout, isTryout }) {
   const [tab, setTab] = useState('listings')
   const [pending, setPending] = useState([])
@@ -372,6 +500,7 @@ function AdminDashboardInner({ onLogout, isTryout }) {
   const [enquiries, setEnquiries] = useState([])
   const [events, setEvents] = useState([])
   const [approveTarget, setApproveTarget] = useState(null)
+  const [editingItem, setEditingItem] = useState(null)
   const [config, setConfig] = useState(undefined)
   const brandColor = config?.brand_color || '#e8843c'
 
@@ -442,6 +571,14 @@ function AdminDashboardInner({ onLogout, isTryout }) {
           onCancel={() => setApproveTarget(null)}
         />
       )}
+      {editingItem && (
+        <EditListingModal
+          item={editingItem}
+          modeConfig={config?.mode_config}
+          onSaved={() => { setEditingItem(null); load() }}
+          onCancel={() => setEditingItem(null)}
+        />
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
@@ -452,9 +589,18 @@ function AdminDashboardInner({ onLogout, isTryout }) {
             Admin Dashboard — approve listings, manage bookings, and view your calendar.
           </p>
         </div>
-        <button onClick={onLogout} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.4rem 0.9rem', color: '#777', cursor: 'pointer', fontSize: '0.85rem' }}>
-          Sign out
-        </button>
+        <div style={{ display: 'flex', gap: '0.6rem' }}>
+          <a
+            href={`${MOBILE_APP_URL}${config?.slug ? `/t/${config.slug}` : '/reset-tenant'}`}
+            target="_blank" rel="noreferrer"
+            style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.4rem 0.9rem', color: brandColor, textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+          >
+            📱 Open Phone App
+          </a>
+          <button onClick={onLogout} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.4rem 0.9rem', color: '#777', cursor: 'pointer', fontSize: '0.85rem' }}>
+            Sign out
+          </button>
+        </div>
       </div>
 
       {/* Stats row */}
@@ -499,10 +645,13 @@ function AdminDashboardInner({ onLogout, isTryout }) {
                       <h3>{item.name}</h3>
                       <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>{item.description}</p>
                       {item.price && <p style={{ fontWeight: 600, color: brandColor }}>{item.price}</p>}
-                      {isTryout
-                        ? <LockedButton label="Approve & Publish" style={{ marginTop: '0.5rem' }} />
-                        : <button className="btn" style={{ background: brandColor, marginTop: '0.5rem' }} onClick={() => approveListing(item.id)}>Approve & Publish</button>
-                      }
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        {isTryout
+                          ? <LockedButton label="Approve & Publish" />
+                          : <button className="btn" style={{ background: brandColor }} onClick={() => approveListing(item.id)}>Approve & Publish</button>
+                        }
+                        <button className="btn btn--outline" onClick={() => setEditingItem(item)}>Edit</button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -523,7 +672,10 @@ function AdminDashboardInner({ onLogout, isTryout }) {
                       <h3>{item.name}</h3>
                       <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>{item.description}</p>
                       {item.price && <p style={{ fontWeight: 600, color: brandColor }}>{item.price}</p>}
-                      <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>✓ Live</span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>✓ Live</span>
+                        <button className="btn btn--outline" style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem' }} onClick={() => setEditingItem(item)}>Edit</button>
+                      </div>
                     </div>
                   </div>
                 ))}

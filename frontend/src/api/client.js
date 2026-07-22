@@ -98,6 +98,16 @@ export async function addListing(data) {
   return res.json();
 }
 
+export async function updateListing(id, data) {
+  const res = await fetch(`${BASE}/admin/items/${id}`, {
+    method: 'PUT',
+    headers: adminHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (res.status === 401) throw new Error('UNAUTHORIZED');
+  return res.json();
+}
+
 export async function updateConfig(data) {
   const res = await fetch(`${BASE}/config`, {
     method: 'PUT',

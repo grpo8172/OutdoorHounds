@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom'
 import { getItems, getConfig, trackEvent } from '../../api/client'
 import { EnquiryModal } from './EnquiryModal'
 
+const MOBILE_APP_URL = import.meta.env.VITE_MOBILE_APP_URL || 'http://localhost:8081'
+
 const ALL_TYPE_LABELS = {
   pet:                 'Adopt / Foster',
   hike:                'Group Hike',
@@ -75,7 +77,7 @@ function PettingZooCard({ item, saved, onSave, openModal, slug }) {
   )
 }
 
-function StandardCard({ item, onEnquire, typeLabel }) {
+function StandardCard({ item, onEnquire, typeLabel, ctaLabel }) {
   return (
     <div className="card">
       <img src={item.image_url || '/media/placeholder.jpg'} alt={item.name} onError={e => { e.target.style.display = 'none' }} />
@@ -86,7 +88,7 @@ function StandardCard({ item, onEnquire, typeLabel }) {
         <p>{item.description}</p>
         {item.price && <p><strong>{item.price}</strong></p>}
         <button className="btn" onClick={() => onEnquire(item)}>
-          {STANDARD_CTA[item.item_type] || 'Enquire'}
+          {item.cta_label || ctaLabel || STANDARD_CTA[item.item_type] || 'Enquire'}
         </button>
       </div>
     </div>
@@ -109,6 +111,9 @@ export default function Storefront() {
 
   const typeLabelMap = Object.fromEntries(
     (config?.mode_config ?? []).map(m => [m.key, m.label])
+  )
+  const ctaLabelMap = Object.fromEntries(
+    (config?.mode_config ?? []).map(m => [m.key, m.cta_label])
   )
 
   const activeModeConfig = config?.mode_config
@@ -147,6 +152,23 @@ export default function Storefront() {
   return (
     <div>
       {enquiryItem && <EnquiryModal item={enquiryItem} onClose={() => setEnquiryItem(null)} />}
+
+      {/* Lets a visitor jump straight to this same business's mobile app —
+          /reset-tenant (not a bare link) for the default tenant, otherwise
+          opening the app would silently keep showing whichever tenant was
+          last joined on that device instead of landing on this one. Kept as
+          the very first thing on the page, above the hero, so it's never
+          buried below other content. */}
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '0 0 1.25rem' }}>
+        <a
+          href={`${MOBILE_APP_URL}${slug ? `/t/${slug}` : '/reset-tenant'}`}
+          target="_blank" rel="noreferrer"
+          className="btn"
+          style={{ backgroundColor: config?.brand_color || '#e8843c', textDecoration: 'none', display: 'inline-block' }}
+        >
+          📱 Open the App
+        </a>
+      </div>
 
       {/* Sample callout — only on the platform's own default tenant (no
           slug), so a real tenant's storefront never shows this about
@@ -193,7 +215,7 @@ export default function Storefront() {
           item.item_type === 'petting_zoo_booking' ? (
             <PettingZooCard key={item.id} item={item} saved={saved.has(item.id)} onSave={() => toggleSave(item.id)} openModal={setEnquiryItem} slug={slug} />
           ) : (
-            <StandardCard key={item.id} item={item} onEnquire={handleEnquire} typeLabel={typeLabelMap[item.item_type]} />
+            <StandardCard key={item.id} item={item} onEnquire={handleEnquire} typeLabel={typeLabelMap[item.item_type]} ctaLabel={ctaLabelMap[item.item_type]} />
           )
         )}
       </div>

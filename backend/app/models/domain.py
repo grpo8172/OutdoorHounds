@@ -32,6 +32,11 @@ class CatalogueItem(Base):
     # own convention — see mobile/drizzle/schema.ts's catalogueItems.userId
     # comment). Used to flag sample cards on the storefront.
     user_id = Column(Integer, nullable=True)
+    # Per-listing override of the enquiry button text (falls back to the
+    # tenant's category-level OwnerConfig.mode_config[].cta_label, then a
+    # hardcoded default, when unset) — lets an admin customise one specific
+    # listing's button without renaming the whole category.
+    cta_label = Column(String(64), nullable=True)
     # Which tenant's storefront this listing belongs to (OwnerConfig.id).
     # Nullable + backfilled to 1 for pre-multi-tenancy rows; mobile-app
     # submissions always land on tenant 1 today (mobile has no tenant concept).
@@ -91,15 +96,15 @@ class OwnerConfig(Base):
     # Matches a subscriptions.admin_token value (mobile/Drizzle-managed table
     # in the same physical DB) — not a real FK, cross-migration-system.
     admin_token = Column(String(64), nullable=True, unique=True)
-    # Full mode config — each entry: {key, active, emoji, label, subtitle, image}
+    # Full mode config — each entry: {key, active, emoji, label, subtitle, image, cta_label}
     mode_config = Column(JSON, default=lambda: [
-        {"key": "pet",                 "active": True, "emoji": "🐾", "label": "Adopt / Foster",   "subtitle": "Give a pet a loving home", "image": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&h=300&fit=crop"},
-        {"key": "service",             "active": True, "emoji": "🦮", "label": "Pet Services",     "subtitle": "Trusted care near you",    "image": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&h=300&fit=crop"},
-        {"key": "event",               "active": True, "emoji": "🎉", "label": "Pet Events",       "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop"},
-        {"key": "stall",               "active": True, "emoji": "🛍️", "label": "Stalls & Shops",   "subtitle": "Discover pet products",    "image": "https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?w=600&h=300&fit=crop"},
-        {"key": "lost_found",          "active": True, "emoji": "🔍", "label": "Lost & Found",     "subtitle": "Help reunite pets",        "image": "https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?w=600&h=300&fit=crop"},
-        {"key": "hike",                "active": True, "emoji": "🥾", "label": "Group Hikes",      "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop"},
-        {"key": "petting_zoo_booking", "active": True, "emoji": "🐑", "label": "Mini Petting Zoo", "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop"},
+        {"key": "pet",                 "active": True, "emoji": "🐾", "label": "Adopt / Foster",   "subtitle": "Give a pet a loving home", "image": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&h=300&fit=crop", "cta_label": "Apply to Adopt"},
+        {"key": "service",             "active": True, "emoji": "🦮", "label": "Pet Services",     "subtitle": "Trusted care near you",    "image": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&h=300&fit=crop", "cta_label": "Enquire"},
+        {"key": "event",               "active": True, "emoji": "🎉", "label": "Pet Events",       "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop", "cta_label": "Get Tickets"},
+        {"key": "stall",               "active": True, "emoji": "🛍️", "label": "Stalls & Shops",   "subtitle": "Discover pet products",    "image": "https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?w=600&h=300&fit=crop", "cta_label": "Enquire"},
+        {"key": "lost_found",          "active": True, "emoji": "🔍", "label": "Lost & Found",     "subtitle": "Help reunite pets",        "image": "https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?w=600&h=300&fit=crop", "cta_label": "I Think I Found Them"},
+        {"key": "hike",                "active": True, "emoji": "🥾", "label": "Group Hikes",      "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop", "cta_label": "Request a Spot"},
+        {"key": "petting_zoo_booking", "active": True, "emoji": "🐑", "label": "Mini Petting Zoo", "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop", "cta_label": "Check availability"},
     ])
     hero_photos = Column(JSON, default=lambda: [])
     brand_color = Column(String(16), default="#e8843c")

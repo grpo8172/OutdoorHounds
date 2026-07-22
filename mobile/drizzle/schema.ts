@@ -89,6 +89,10 @@ export const ownerConfig = mysqlTable("owner_config", {
   // can add listings, i.e. this tenant is a single-owner brand, not a
   // community marketplace. See backend/app/models/domain.py for the source.
   allowPublicListings: boolean("allow_public_listings"),
+  // Not a real FK (see subscriptions.adminToken's own comment) — joined
+  // against subscriptions.adminToken to resolve "which tenant does this
+  // signed-in user own" (see getOwnedTenantSlugForUser in server/db.ts).
+  adminToken: varchar("admin_token", { length: 64 }),
 });
 
 export type OwnerConfig = typeof ownerConfig.$inferSelect;

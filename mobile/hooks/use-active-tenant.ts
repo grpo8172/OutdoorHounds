@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "expo-router";
 import * as Tenant from "@/lib/_core/tenant";
 import { trpc } from "@/lib/trpc";
 import { isTenantNotFoundError } from "@/lib/trpc-error";
+import { useAuth } from "@/hooks/use-auth";
 
 const WEB_BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:8000";
 
@@ -20,11 +22,36 @@ function resolvePhotoUrl(url: string | null): string | null {
 // persisted slug ever stops resolving (tenant deleted, etc.) — without
 // this, every tenant-aware call would 404 forever with no in-app recovery.
 export function useActiveTenant() {
+  const pathname = usePathname();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [slug, setSlug] = useState<string | null | undefined>(undefined);
 
+  // A signed-in tenant owner should land on their OWN site by default,
+  // rather than the platform default or whatever tenant this device last
+  // joined (e.g. from testing/visiting another business's storefront) —
+  // but an explicit /t/:slug visit (app/t/[slug].tsx, which itself calls
+  // Tenant.setTenantSlug) always wins over this auto-join.
+  const onExplicitTenantRoute = pathname.startsWith("/t/");
+  const ownedTenantQuery = trpc.subscriptions.getAdminStatus.useQuery(undefined, {
+    enabled: isAuthenticated && !onExplicitTenantRoute,
+  });
+
   useEffect(() => {
+    if (onExplicitTenantRoute) {
+      Tenant.getTenantSlug().then(setSlug);
+      return;
+    }
+    if (authLoading) return;
+    if (isAuthenticated) {
+      if (ownedTenantQuery.isLoading) return;
+      if (ownedTenantQuery.data?.slug) {
+        const ownedSlug = ownedTenantQuery.data.slug;
+        Tenant.setTenantSlug(ownedSlug).then(() => setSlug(ownedSlug));
+        return;
+      }
+    }
     Tenant.getTenantSlug().then(setSlug);
-  }, []);
+  }, [onExplicitTenantRoute, authLoading, isAuthenticated, ownedTenantQuery.isLoading, ownedTenantQuery.data]);
 
   const query = trpc.tenant.getActive.useQuery(undefined, {
     enabled: !!slug,

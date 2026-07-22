@@ -100,6 +100,14 @@ export default function HomeScreen() {
           </Pressable>
         ))}
 
+        {/* No per-viewer owner check exists on mobile (admin auth only lives
+            on the web app) — so this can only be gated on the tenant-wide
+            allow_public_listings flag, not "is this specifically the owner".
+            That means it must stay hidden entirely rather than swap in an
+            admin-login shortcut when public submissions are off: a business
+            that opted into "just me" mode did so specifically to keep things
+            locked down, and surfacing a labeled link to their admin login to
+            every visitor would undermine exactly that. */}
         {allowPublicListings && (
           <Pressable
             onPress={() => router.push("/create-listing")}

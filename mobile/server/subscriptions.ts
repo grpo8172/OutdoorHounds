@@ -8,6 +8,7 @@ import {
   hasSubscriptionForTransaction,
   recordVerifiedPayment,
   getAdminTokenForUser,
+  getOwnedTenantSlugForUser,
   topUpDailyWriteQuota,
   PAID_DAILY_WRITE_LIMIT,
 } from "./db";
@@ -116,6 +117,10 @@ export const subscriptionsRouter = router({
   getAdminStatus: protectedProcedure.query(async ({ ctx }) => {
     const active = await hasActiveAdminSubscription(ctx.user.id);
     const adminToken = active ? await getAdminTokenForUser(ctx.user.id) : null;
-    return { active, adminToken };
+    // Null for a default-tenant admin (no slug) as well as non-owners — the
+    // caller (useActiveTenant) only auto-joins when there's an actual slug
+    // to join.
+    const slug = active ? await getOwnedTenantSlugForUser(ctx.user.id) : null;
+    return { active, adminToken, slug };
   }),
 });

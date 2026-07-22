@@ -311,6 +311,28 @@ export async function getAdminTokenForUser(userId: number): Promise<string | nul
   return result.length > 0 ? (result[0].adminToken ?? null) : null;
 }
 
+// Resolves "which tenant does this signed-in user own", for defaulting a
+// tenant owner straight to their own site instead of the platform default
+// or whatever tenant this device last joined (see useActiveTenant). Returns
+// null for non-owners and owners of the default tenant (no slug).
+export async function getOwnedTenantSlugForUser(userId: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select({ slug: ownerConfig.slug })
+    .from(subscriptions)
+    .innerJoin(ownerConfig, eq(ownerConfig.adminToken, subscriptions.adminToken))
+    .where(
+      and(
+        eq(subscriptions.userId, userId),
+        eq(subscriptions.status, "active"),
+        eq(subscriptions.tier, "admin"),
+      ),
+    )
+    .limit(1);
+  return result.length > 0 ? (result[0].slug ?? null) : null;
+}
+
 // ── Tenants ───────────────────────────────────────────────────────────────────
 
 export const DEFAULT_TENANT_ID = 1;

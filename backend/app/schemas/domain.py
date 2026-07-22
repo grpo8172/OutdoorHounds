@@ -16,6 +16,10 @@ class ModeConfig(BaseModel):
     # Background photo for the mobile category card. Optional for the same
     # reason as subtitle — falls back to mobile's own stock photo per category.
     image: Optional[str] = None
+    # Enquiry button text for listings in this category (e.g. "Get Tickets",
+    # "Apply to Adopt"). Optional so tenants created before this field existed
+    # fall back to the storefront's generic "Enquire" copy.
+    cta_label: Optional[str] = None
 
 class OwnerConfigResponse(BaseModel):
     id: int
@@ -73,9 +77,21 @@ class CatalogueItemBase(BaseModel):
     price: Optional[str] = None
     image_url: Optional[str] = None
     listing_meta: Optional[dict] = None
+    # Overrides the category's cta_label for this listing only. None means
+    # "use the category/tenant default", not "no button".
+    cta_label: Optional[str] = None
 
 class CatalogueItemCreate(CatalogueItemBase):
     pass
+
+# All fields optional — an admin editing a listing only sends what changed.
+class CatalogueItemUpdate(BaseModel):
+    item_type: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[str] = None
+    image_url: Optional[str] = None
+    cta_label: Optional[str] = None
 
 class CatalogueItemResponse(CatalogueItemBase):
     id: int

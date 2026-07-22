@@ -35,6 +35,9 @@ def _add_missing_columns() -> None:
         "owner_config": {
             "allow_public_listings": "BOOLEAN DEFAULT TRUE",
         },
+        "catalogue_items": {
+            "cta_label": "VARCHAR(64)",
+        },
     }
     with engine.begin() as conn:
         for table, new_columns in tables_and_columns.items():
@@ -69,13 +72,13 @@ if GCS_BUCKET_NAME:
     _gcs_bucket = gcs_storage.Client().bucket(GCS_BUCKET_NAME)
 
 DEFAULT_MODE_CONFIG = [
-    {"key": "pet",                 "active": True, "emoji": "🐾", "label": "Adopt / Foster",   "subtitle": "Give a pet a loving home", "image": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&h=300&fit=crop"},
-    {"key": "service",             "active": True, "emoji": "🦮", "label": "Pet Services",     "subtitle": "Trusted care near you",    "image": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&h=300&fit=crop"},
-    {"key": "event",               "active": True, "emoji": "🎉", "label": "Pet Events",       "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop"},
-    {"key": "stall",               "active": True, "emoji": "🛍️", "label": "Stalls & Shops",   "subtitle": "Discover pet products",    "image": "https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?w=600&h=300&fit=crop"},
-    {"key": "lost_found",          "active": True, "emoji": "🔍", "label": "Lost & Found",     "subtitle": "Help reunite pets",        "image": "https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?w=600&h=300&fit=crop"},
-    {"key": "hike",                "active": True, "emoji": "🥾", "label": "Group Hikes",      "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop"},
-    {"key": "petting_zoo_booking", "active": True, "emoji": "🐑", "label": "Mini Petting Zoo", "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop"},
+    {"key": "pet",                 "active": True, "emoji": "🐾", "label": "Adopt / Foster",   "subtitle": "Give a pet a loving home", "image": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&h=300&fit=crop", "cta_label": "Apply to Adopt"},
+    {"key": "service",             "active": True, "emoji": "🦮", "label": "Pet Services",     "subtitle": "Trusted care near you",    "image": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&h=300&fit=crop", "cta_label": "Enquire"},
+    {"key": "event",               "active": True, "emoji": "🎉", "label": "Pet Events",       "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop", "cta_label": "Get Tickets"},
+    {"key": "stall",               "active": True, "emoji": "🛍️", "label": "Stalls & Shops",   "subtitle": "Discover pet products",    "image": "https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?w=600&h=300&fit=crop", "cta_label": "Enquire"},
+    {"key": "lost_found",          "active": True, "emoji": "🔍", "label": "Lost & Found",     "subtitle": "Help reunite pets",        "image": "https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?w=600&h=300&fit=crop", "cta_label": "I Think I Found Them"},
+    {"key": "hike",                "active": True, "emoji": "🥾", "label": "Group Hikes",      "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop", "cta_label": "Request a Spot"},
+    {"key": "petting_zoo_booking", "active": True, "emoji": "🐑", "label": "Mini Petting Zoo", "subtitle": "Join the community",       "image": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=300&fit=crop", "cta_label": "Check availability"},
 ]
 
 # Seed for a brand-new tenant (see get_admin's auto-provision block below) —
@@ -88,13 +91,13 @@ DEFAULT_MODE_CONFIG = [
 # unlabelled so nothing pet-themed ever reaches a new tenant's storefront
 # before its owner explicitly sets it up.
 NEW_TENANT_MODE_CONFIG = [
-    {"key": "pet",                 "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
-    {"key": "service",             "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
-    {"key": "event",               "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
-    {"key": "stall",               "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
-    {"key": "lost_found",          "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
-    {"key": "hike",                "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
-    {"key": "petting_zoo_booking", "active": False, "emoji": "", "label": "", "subtitle": "", "image": None},
+    {"key": "pet",                 "active": False, "emoji": "", "label": "", "subtitle": "", "image": None, "cta_label": ""},
+    {"key": "service",             "active": False, "emoji": "", "label": "", "subtitle": "", "image": None, "cta_label": ""},
+    {"key": "event",               "active": False, "emoji": "", "label": "", "subtitle": "", "image": None, "cta_label": ""},
+    {"key": "stall",               "active": False, "emoji": "", "label": "", "subtitle": "", "image": None, "cta_label": ""},
+    {"key": "lost_found",          "active": False, "emoji": "", "label": "", "subtitle": "", "image": None, "cta_label": ""},
+    {"key": "hike",                "active": False, "emoji": "", "label": "", "subtitle": "", "image": None, "cta_label": ""},
+    {"key": "petting_zoo_booking", "active": False, "emoji": "", "label": "", "subtitle": "", "image": None, "cta_label": ""},
 ]
 
 app.add_middleware(
@@ -296,6 +299,24 @@ def admin_get_published_items(db: Session = Depends(get_db), tenant: models.Owne
         models.CatalogueItem.status == "approved",
         models.CatalogueItem.tenant_id == tenant.id,
     ).all()
+
+
+@app.put("/api/admin/items/{item_id}", response_model=schemas.CatalogueItemResponse)
+def admin_update_item(item_id: int, patch: schemas.CatalogueItemUpdate, db: Session = Depends(get_db), tenant: models.OwnerConfig = Depends(get_admin)):
+    """Edit a listing already on the admin's own site (pending or published) —
+    e.g. per-listing button text, correcting a title/price/photo. Scoped to
+    the admin's own tenant so one admin can't edit another's listings."""
+    item = db.query(models.CatalogueItem).filter(
+        models.CatalogueItem.id == item_id,
+        models.CatalogueItem.tenant_id == tenant.id,
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    for field, value in patch.model_dump(exclude_unset=True).items():
+        setattr(item, field, value)
+    db.commit()
+    db.refresh(item)
+    return item
 
 
 @app.get("/api/admin/config", response_model=schemas.OwnerConfigResponse)
