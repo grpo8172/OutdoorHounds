@@ -199,7 +199,7 @@ export default function CreateListingScreen() {
   });
   const hasProfile = !!profileQuery.data?.displayName;
 
-  const { modeConfig: tenantModeConfig } = useActiveTenant();
+  const { modeConfig: tenantModeConfig, allowPublicListings } = useActiveTenant();
   const modes = useMemo(() => mergeTenantModes(tenantModeConfig), [tenantModeConfig]);
 
   const subscriptionQuery = trpc.subscriptions.getStatus.useQuery(undefined, {
@@ -214,6 +214,17 @@ export default function CreateListingScreen() {
       <ScreenContainer className="items-center justify-center">
         <ActivityIndicator />
       </ScreenContainer>
+    );
+  }
+
+  if (!allowPublicListings) {
+    return (
+      <GateScreen
+        title="Not accepting submissions"
+        description="This business only shows listings added by its own owner right now."
+        ctaLabel="Go back"
+        onPress={() => router.back()}
+      />
     );
   }
 

@@ -49,16 +49,28 @@ function AppInner() {
       if (value) document.documentElement.style.setProperty(name, value)
       else document.documentElement.style.removeProperty(name)
     }
-    getConfig(slug)
-      .then(d => {
-        if (d.business_name) setSiteName(d.business_name)
-        if (d.site_emoji) setSiteEmoji(d.site_emoji)
-        applyVar('--accent', d.brand_color)
-        applyVar('--banner', d.banner_color)
-        applyVar('--bg', d.background_color)
-      })
-      .catch(() => {})
-  }, [slug])
+    const applyConfig = (d) => {
+      if (d.business_name) setSiteName(d.business_name)
+      if (d.site_emoji) setSiteEmoji(d.site_emoji)
+      applyVar('--accent', d.brand_color)
+      applyVar('--banner', d.banner_color)
+      applyVar('--bg', d.background_color)
+    }
+
+    // /admin and /setup are slug-less by design — the tenant they operate on
+    // is resolved server-side from the admin's own token, never a URL param
+    // (see the comment atop this component). getConfig(slug) below would
+    // therefore always resolve to the DEFAULT tenant here, leaking its
+    // colours/name onto every admin's own dashboard instead of theirs — use
+    // the already-fetched myTenant (their own config) on these two routes.
+    const isOwnAdminPage = location.pathname === '/admin' || location.pathname === '/setup'
+    if (isOwnAdminPage) {
+      if (myTenant) applyConfig(myTenant)
+      return
+    }
+
+    getConfig(slug).then(applyConfig).catch(() => {})
+  }, [slug, location.pathname, myTenant])
 
   return (
     <>

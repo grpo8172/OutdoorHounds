@@ -113,6 +113,11 @@ class OwnerConfig(Base):
     # choice, not a side-effect of finishing setup. Default tenant (id=1) is
     # shown regardless of this flag, see list_marketplace() in main.py.
     list_in_marketplace = Column(Boolean, default=False)
+    # Gates the public "propose a listing" flow (web /api/items and the
+    # mobile app's create-listing screen) — off lets a tenant run as a pure
+    # single-owner portfolio/brand instead of a community marketplace.
+    # Doesn't affect the admin's own Add Listing tab, which always works.
+    allow_public_listings = Column(Boolean, default=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 class Profile(Base):

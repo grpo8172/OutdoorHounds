@@ -199,6 +199,7 @@ function OwnerSetupInner({ isTryout }) {
     banner_color: '',
     background_color: '',
     list_in_marketplace: false,
+    allow_public_listings: true,
   }))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -267,6 +268,7 @@ function OwnerSetupInner({ isTryout }) {
         banner_color: config.banner_color || null,
         background_color: config.background_color || null,
         list_in_marketplace: config.list_in_marketplace,
+        allow_public_listings: config.allow_public_listings,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -324,6 +326,37 @@ function OwnerSetupInner({ isTryout }) {
           </label>
         </section>
       )}
+
+      {/* Who can add listings — a portfolio-style tenant (e.g. one artist
+          showing only their own work) wants this off; a community
+          marketplace wants it on. Either way the admin's own Add Listing
+          tab always works. */}
+      <section style={sectionStyle}>
+        <h3 style={headingStyle}>Who can add listings?</h3>
+        <p style={{ fontSize: '0.85rem', color: '#777', margin: '0 0 1rem' }}>
+          Let other people submit their own listings for your approval, or keep this site just your own brand.
+        </p>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
+          <input
+            type="radio"
+            name="allow_public_listings"
+            checked={config.allow_public_listings !== false}
+            onChange={() => setConfig({ ...config, allow_public_listings: true })}
+            style={{ width: 18, height: 18, accentColor: '#e8843c', cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: '0.9rem' }}>Anyone can submit a listing (I'll approve or decline each one)</span>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+          <input
+            type="radio"
+            name="allow_public_listings"
+            checked={config.allow_public_listings === false}
+            onChange={() => setConfig({ ...config, allow_public_listings: false })}
+            style={{ width: 18, height: 18, accentColor: '#e8843c', cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: '0.9rem' }}>Just me — only I can add listings, to represent my own brand</span>
+        </label>
+      </section>
 
       {/* Business name */}
       <section style={sectionStyle}>

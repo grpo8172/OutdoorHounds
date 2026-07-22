@@ -25,17 +25,23 @@ Base.metadata.create_all(bind=engine)
 def _add_missing_columns() -> None:
     from sqlalchemy import inspect, text
     inspector = inspect(engine)
-    existing = {c["name"] for c in inspector.get_columns("web_enquiries")}
-    new_columns = {
-        "proposed_date": "VARCHAR(10)",
-        "proposed_time": "VARCHAR(5)",
-        "ai_confidence": "INTEGER",
-        "ai_reasoning": "TEXT",
+    tables_and_columns = {
+        "web_enquiries": {
+            "proposed_date": "VARCHAR(10)",
+            "proposed_time": "VARCHAR(5)",
+            "ai_confidence": "INTEGER",
+            "ai_reasoning": "TEXT",
+        },
+        "owner_config": {
+            "allow_public_listings": "BOOLEAN DEFAULT TRUE",
+        },
     }
     with engine.begin() as conn:
-        for name, coltype in new_columns.items():
-            if name not in existing:
-                conn.execute(text(f"ALTER TABLE web_enquiries ADD COLUMN {name} {coltype}"))
+        for table, new_columns in tables_and_columns.items():
+            existing = {c["name"] for c in inspector.get_columns(table)}
+            for name, coltype in new_columns.items():
+                if name not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {coltype}"))
 
 _add_missing_columns()
 
@@ -259,6 +265,8 @@ def get_item(item_id: int, db: Session = Depends(get_db), tenant_slug: Optional[
 def create_item(item: schemas.CatalogueItemCreate, tenant_slug: Optional[str] = Query(None), db: Session = Depends(get_db)):
     """Proposing a listing never publishes it; it enters pending_review for that tenant's owner approval."""
     tenant = _resolve_tenant(db, tenant_slug)
+    if not tenant.allow_public_listings:
+        raise HTTPException(status_code=403, detail="This business isn't accepting public listing submissions.")
     db_item = models.CatalogueItem(**item.model_dump(), status="pending_review", tenant_id=tenant.id)
     db.add(db_item)
     _log(db, "item_proposed", f"Item '{item.name}' proposed (pending_review).", tenant_id=tenant.id)

@@ -1,4 +1,5 @@
 import {
+  boolean,
   decimal,
   int,
   json,
@@ -84,6 +85,10 @@ export const ownerConfig = mysqlTable("owner_config", {
   brandColor: varchar("brand_color", { length: 16 }),
   bannerColor: varchar("banner_color", { length: 16 }),
   backgroundColor: varchar("background_color", { length: 16 }),
+  // Gates the create-listing screen — off means only the web admin dashboard
+  // can add listings, i.e. this tenant is a single-owner brand, not a
+  // community marketplace. See backend/app/models/domain.py for the source.
+  allowPublicListings: boolean("allow_public_listings"),
 });
 
 export type OwnerConfig = typeof ownerConfig.$inferSelect;

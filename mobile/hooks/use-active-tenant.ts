@@ -65,6 +65,7 @@ export function useActiveTenant() {
     chatGreeting: query.data?.chatGreeting ?? null,
     chatPlaceholder: query.data?.chatPlaceholder ?? null,
     chatDisclaimer: query.data?.chatDisclaimer ?? null,
+    allowPublicListings: query.data?.allowPublicListings ?? true,
     leave,
   };
 }

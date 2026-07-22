@@ -15,6 +15,7 @@ export default function HomeScreen() {
   const {
     isNonDefault, businessName, siteEmoji: tenantEmoji, slug,
     brandColor, backgroundColor, heroPhoto, tagline, modeConfig, leave,
+    allowPublicListings,
   } = useActiveTenant();
 
   const siteName = businessName ?? "Outdoor Hounds";
@@ -99,21 +100,23 @@ export default function HomeScreen() {
           </Pressable>
         ))}
 
-        <Pressable
-          onPress={() => router.push("/create-listing")}
-          className="w-full rounded-2xl border-2 border-dashed border-border bg-surface active:opacity-70"
-          style={{ height: 80 }}
-        >
-          <View className="flex-1 flex-row items-center px-5 gap-4">
-            <View className="w-10 h-10 rounded-full bg-primary/15 items-center justify-center">
-              <Text className="text-primary text-xl font-bold">+</Text>
+        {allowPublicListings && (
+          <Pressable
+            onPress={() => router.push("/create-listing")}
+            className="w-full rounded-2xl border-2 border-dashed border-border bg-surface active:opacity-70"
+            style={{ height: 80 }}
+          >
+            <View className="flex-1 flex-row items-center px-5 gap-4">
+              <View className="w-10 h-10 rounded-full bg-primary/15 items-center justify-center">
+                <Text className="text-primary text-xl font-bold">+</Text>
+              </View>
+              <View>
+                <Text className="text-foreground font-semibold">Add a Listing</Text>
+                <Text className="text-xs text-muted">Share a pet, service, event or product</Text>
+              </View>
             </View>
-            <View>
-              <Text className="text-foreground font-semibold">Add a Listing</Text>
-              <Text className="text-xs text-muted">Share a pet, service, event or product</Text>
-            </View>
-          </View>
-        </Pressable>
+          </Pressable>
+        )}
 
         {/* Sign-in nudge for guests */}
         {!loading && !user && (

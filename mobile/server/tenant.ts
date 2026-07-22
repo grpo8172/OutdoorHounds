@@ -23,6 +23,7 @@ export const tenantRouter = router({
       chatGreeting: config?.chatGreeting ?? null,
       chatPlaceholder: config?.chatPlaceholder ?? null,
       chatDisclaimer: config?.chatDisclaimer ?? null,
+      allowPublicListings: config?.allowPublicListings ?? true,
     };
   }),
 });

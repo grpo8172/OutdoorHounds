@@ -35,6 +35,7 @@ class OwnerConfigResponse(BaseModel):
     # get_config's own logic, see main.py.
     slug: Optional[str] = None
     list_in_marketplace: bool = False
+    allow_public_listings: bool = True
 
     class Config:
         from_attributes = True
@@ -52,6 +53,7 @@ class OwnerConfigUpdate(BaseModel):
     banner_color: Optional[str] = None
     background_color: Optional[str] = None
     list_in_marketplace: Optional[bool] = None
+    allow_public_listings: Optional[bool] = None
 
 # Public directory entry — deliberately a narrower shape than
 # OwnerConfigResponse (no admin_token-adjacent fields, no full mode_config)

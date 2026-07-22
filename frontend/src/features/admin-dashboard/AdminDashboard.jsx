@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, createContext, useContext } from 'react'
 import { getAuditEvents, getPendingItems, approveItem, getEnquiries, decideEnquiry, reproposeEnquiry, getMyItems, getMyConfig, addListing, uploadConfigPhotos } from '../../api/client'
 import AdminLoginGate, { useAdminAuth } from '../admin-auth/AdminLoginGate'
 
@@ -12,9 +12,18 @@ const MONTHS = ['January','February','March','April','May','June',
   'July','August','September','October','November','December']
 const DAY_HEADERS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
 
+// Every tenant runs on the same admin dashboard UI, but each one styles it
+// with their own brand color (set in Owner Setup) so it reads as "their"
+// business rather than a generic shared tool. AI-proposed styling (amber
+// dashed badges) stays fixed regardless of brand color — that's a status
+// indicator, not a brand accent.
+const BrandColorContext = createContext('#e8843c')
+const AI_ACCENT = '#e8843c'
+
 // ── Calendar ─────────────────────────────────────────────────────────────────
 
 function Calendar({ bookings, items }) {
+  const brandColor = useContext(BrandColorContext)
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
@@ -78,23 +87,23 @@ function Calendar({ bookings, items }) {
               style={{
                 minHeight: 80,
                 borderRadius: 8,
-                border: `1.5px solid ${day && isToday(day) ? '#e8843c' : '#e5e7eb'}`,
+                border: `1.5px solid ${day && isToday(day) ? brandColor : '#e5e7eb'}`,
                 backgroundColor: day ? (isToday(day) ? '#fff7f0' : '#fff') : '#f9fafb',
                 padding: '6px 5px',
                 cursor: day && dayBookings.length ? 'pointer' : 'default',
                 transition: 'box-shadow 0.1s',
-                boxShadow: selected === day ? '0 0 0 2px #e8843c' : 'none',
+                boxShadow: selected === day ? `0 0 0 2px ${brandColor}` : 'none',
               }}
             >
               {day && (
                 <>
-                  <div style={{ fontSize: '0.78rem', fontWeight: isToday(day) ? 700 : 500, color: isToday(day) ? '#e8843c' : '#374151', marginBottom: 3 }}>{day}</div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: isToday(day) ? 700 : 500, color: isToday(day) ? brandColor : '#374151', marginBottom: 3 }}>{day}</div>
                   {dayBookings.map(b => (
                     <div key={b.id} style={{
                       fontSize: '0.65rem',
-                      background: b.status === 'ai_proposed' ? '#fde4cc' : '#e8843c',
+                      background: b.status === 'ai_proposed' ? '#fde4cc' : brandColor,
                       color: b.status === 'ai_proposed' ? '#92400e' : '#fff',
-                      border: b.status === 'ai_proposed' ? '1px dashed #e8843c' : 'none',
+                      border: b.status === 'ai_proposed' ? `1px dashed ${AI_ACCENT}` : 'none',
                       borderRadius: 4, padding: '1px 4px', marginBottom: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
                     }}
                       title={`${itemMap[b.item_id]?.name || b.message}${b.status === 'ai_proposed' ? ' — AI proposed, awaiting approval' : ''}`}>
@@ -110,8 +119,8 @@ function Calendar({ bookings, items }) {
 
       {/* Day detail panel */}
       {selected && byDay[selected] && (
-        <div style={{ marginTop: '1rem', background: '#fff7f0', border: '1px solid #e8843c', borderRadius: 12, padding: '1rem' }}>
-          <strong style={{ color: '#e8843c' }}>{MONTHS[month]} {selected} — {byDay[selected].length} booking{byDay[selected].length !== 1 ? 's' : ''}</strong>
+        <div style={{ marginTop: '1rem', background: '#fff7f0', border: `1px solid ${brandColor}`, borderRadius: 12, padding: '1rem' }}>
+          <strong style={{ color: brandColor }}>{MONTHS[month]} {selected} — {byDay[selected].length} booking{byDay[selected].length !== 1 ? 's' : ''}</strong>
           {byDay[selected].map(b => (
             <div key={b.id} style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #fde4cc' }}>
               <div style={{ fontWeight: 600 }}>{itemMap[b.item_id]?.name || 'Listing'}</div>
@@ -132,6 +141,7 @@ function Calendar({ bookings, items }) {
 // ── Approve modal ─────────────────────────────────────────────────────────────
 
 function ApproveModal({ enquiry, itemName, onConfirm, onCancel }) {
+  const brandColor = useContext(BrandColorContext)
   const [date, setDate] = useState(enquiry.proposed_date || '')
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
@@ -153,7 +163,7 @@ function ApproveModal({ enquiry, itemName, onConfirm, onCancel }) {
         <input type="date" value={date} onChange={e => setDate(e.target.value)}
           style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.95rem', boxSizing: 'border-box', marginBottom: '1rem' }} />
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn" style={{ flex: 1, background: '#e8843c' }} onClick={() => onConfirm(date || null)}>Approve</button>
+          <button className="btn" style={{ flex: 1, background: brandColor }} onClick={() => onConfirm(date || null)}>Approve</button>
           <button className="btn btn--outline" style={{ flex: 1 }} onClick={onCancel}>Cancel</button>
         </div>
       </div>
@@ -188,13 +198,14 @@ export default function AdminDashboard() {
 }
 
 function TryoutBanner() {
+  const brandColor = useContext(BrandColorContext)
   return (
     <div style={{ background: '#fff7f0', border: '1px solid #fcd9b6', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
       <span style={{ fontSize: '0.875rem', color: '#92400e' }}>
         👀 <strong>Preview mode</strong> — you can explore but write actions are locked.
       </span>
       <a href={`${MOBILE_APP_URL}/admin-subscribe`} target="_blank" rel="noreferrer"
-        style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e8843c', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+        style={{ fontSize: '0.85rem', fontWeight: 600, color: brandColor, textDecoration: 'none', whiteSpace: 'nowrap' }}>
         Unlock for $5 →
       </a>
     </div>
@@ -215,6 +226,7 @@ function LockedButton({ label, style }) {
 // Every admin's own isolated site — the link they hand out to their people.
 // `slug` is null for the original/default tenant, which just lives at root.
 function ShareableLink({ slug }) {
+  const brandColor = useContext(BrandColorContext)
   const [copied, setCopied] = useState(false)
   if (slug === undefined) return null
   const url = `${window.location.origin}${slug ? `/t/${slug}` : '/'}`
@@ -229,7 +241,7 @@ function ShareableLink({ slug }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: '#fff7f0', border: '1px solid #fcd9b6', borderRadius: 10, padding: '0.6rem 1rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
       <span style={{ fontSize: '0.85rem', color: '#92400e', fontWeight: 600, flexShrink: 0 }}>🔗 Your site:</span>
       <code style={{ flex: 1, minWidth: 160, fontSize: '0.85rem', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{url}</code>
-      <button onClick={copy} style={{ fontSize: '0.8rem', fontWeight: 600, border: '1px solid #e5e7eb', background: copied ? '#16a34a' : '#fff', color: copied ? '#fff' : '#e8843c', borderRadius: 8, padding: '0.35rem 0.75rem', cursor: 'pointer' }}>
+      <button onClick={copy} style={{ fontSize: '0.8rem', fontWeight: 600, border: '1px solid #e5e7eb', background: copied ? '#16a34a' : '#fff', color: copied ? '#fff' : brandColor, borderRadius: 8, padding: '0.35rem 0.75rem', cursor: 'pointer' }}>
         {copied ? 'Copied!' : 'Copy'}
       </button>
     </div>
@@ -241,11 +253,24 @@ const EMPTY_LISTING = { item_type: 'pet', name: '', description: '', price: '', 
 // Lets a new tenant (whose site starts empty — the mobile app has no
 // concept of which tenant a listing belongs to yet) populate their own
 // storefront directly, without waiting on a customer to propose something.
-function AddListingForm({ onAdded }) {
+function AddListingForm({ onAdded, modeConfig }) {
+  const brandColor = useContext(BrandColorContext)
+  // Prefer the tenant's own configured categories (set in Owner Setup) over
+  // the universal pet-marketplace list, so e.g. an art portfolio tenant sees
+  // their own renamed categories instead of "Pet Services".
+  const categories = modeConfig?.length
+    ? modeConfig.filter(m => m.active)
+    : Object.entries(TYPE_LABELS).map(([key, label]) => ({ key, label }))
   const [form, setForm] = useState(EMPTY_LISTING)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (categories.length && !categories.some(c => c.key === form.item_type)) {
+      setForm(f => ({ ...f, item_type: categories[0].key }))
+    }
+  }, [modeConfig]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }))
 
@@ -277,7 +302,7 @@ function AddListingForm({ onAdded }) {
         price: form.price.trim() || null,
         image_url: form.image_url.trim() || null,
       })
-      setForm(EMPTY_LISTING)
+      setForm({ ...EMPTY_LISTING, item_type: categories[0]?.key || 'pet' })
       onAdded()
     } catch {
       setError('Could not add the listing. Please try again.')
@@ -291,7 +316,7 @@ function AddListingForm({ onAdded }) {
       <div>
         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Category</label>
         <select value={form.item_type} onChange={set('item_type')} style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #ddd', fontSize: '0.9rem' }}>
-          {Object.entries(TYPE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          {categories.map(({ key, label, emoji }) => <option key={key} value={key}>{emoji ? `${emoji} ` : ''}{label}</option>)}
         </select>
       </div>
       <div>
@@ -324,7 +349,7 @@ function AddListingForm({ onAdded }) {
             <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} disabled={uploading} />
             {uploading ? <span>Uploading…</span> : <>
               <span style={{ fontSize: 22 }}>📸</span>
-              <span style={{ color: '#e8843c', fontWeight: 600, fontSize: '0.85rem' }}>Upload a photo</span>
+              <span style={{ color: brandColor, fontWeight: 600, fontSize: '0.85rem' }}>Upload a photo</span>
             </>}
           </label>
         )}
@@ -333,7 +358,7 @@ function AddListingForm({ onAdded }) {
       </div>
       {error && <p style={{ color: '#dc2626', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
       <button type="submit" disabled={saving || !form.name.trim() || !form.description.trim()} className="btn"
-        style={{ background: '#e8843c', alignSelf: 'flex-start', opacity: saving ? 0.7 : 1 }}>
+        style={{ background: brandColor, alignSelf: 'flex-start', opacity: saving ? 0.7 : 1 }}>
         {saving ? 'Adding…' : 'Add Listing'}
       </button>
     </form>
@@ -347,14 +372,15 @@ function AdminDashboardInner({ onLogout, isTryout }) {
   const [enquiries, setEnquiries] = useState([])
   const [events, setEvents] = useState([])
   const [approveTarget, setApproveTarget] = useState(null)
-  const [slug, setSlug] = useState(undefined)
+  const [config, setConfig] = useState(undefined)
+  const brandColor = config?.brand_color || '#e8843c'
 
   const load = () => {
     getPendingItems().then(setPending).catch(() => setPending([]))
     getMyItems().then(setPublished).catch(() => setPublished([]))
     getEnquiries().then(setEnquiries).catch(() => setEnquiries([]))
     getAuditEvents().then(setEvents).catch(() => setEvents([]))
-    getMyConfig().then(c => setSlug(c.slug)).catch(() => {})
+    getMyConfig().then(setConfig).catch(() => {})
   }
 
   useEffect(load, [])
@@ -380,6 +406,11 @@ function AdminDashboardInner({ onLogout, isTryout }) {
     load()
   }
 
+  // Tenant's own category labels (set in Owner Setup) take priority over the
+  // universal pet-marketplace ones, same as the public storefront does.
+  const typeLabelMap = Object.fromEntries((config?.mode_config ?? []).map(m => [m.key, m.label]))
+  const typeLabel = (itemType) => typeLabelMap[itemType] || TYPE_LABELS[itemType] || itemType
+
   const allItems = [...pending, ...published]
   const itemMap = Object.fromEntries(allItems.map(i => [i.id, i]))
   // "pending" here means the AI agent had no proposal (e.g. GCP not
@@ -399,9 +430,10 @@ function AdminDashboardInner({ onLogout, isTryout }) {
   ]
 
   return (
+    <BrandColorContext.Provider value={brandColor}>
     <div>
       {isTryout && <TryoutBanner />}
-      <ShareableLink slug={slug} />
+      <ShareableLink slug={config?.slug} />
       {approveTarget && (
         <ApproveModal
           enquiry={approveTarget}
@@ -413,9 +445,11 @@ function AdminDashboardInner({ onLogout, isTryout }) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
-          <h2 style={{ marginBottom: '0.25rem' }}>Admin Dashboard</h2>
+          <h2 style={{ marginBottom: '0.25rem' }}>
+            {config?.site_emoji ? `${config.site_emoji} ` : ''}{config?.business_name || 'Admin Dashboard'}
+          </h2>
           <p style={{ color: '#9ca3af', fontSize: '0.85rem', margin: 0 }}>
-            Approve listings, manage bookings, and view your calendar.
+            Admin Dashboard — approve listings, manage bookings, and view your calendar.
           </p>
         </div>
         <button onClick={onLogout} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.4rem 0.9rem', color: '#777', cursor: 'pointer', fontSize: '0.85rem' }}>
@@ -427,7 +461,7 @@ function AdminDashboardInner({ onLogout, isTryout }) {
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.75rem' }}>
         {[
           { label: 'Published', value: published.length, color: '#16a34a' },
-          { label: 'Pending listings', value: pending.length, color: '#e8843c' },
+          { label: 'Pending listings', value: pending.length, color: brandColor },
           { label: 'AI proposed', value: aiProposedEnquiries.length, color: '#92400e' },
           { label: 'Needs manual review', value: pendingEnquiries.length, color: '#7b5ea7' },
           { label: 'Approved bookings', value: approvedBookings.length, color: '#0ea5e9' },
@@ -444,8 +478,8 @@ function AdminDashboardInner({ onLogout, isTryout }) {
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             padding: '0.6rem 1rem', fontSize: '0.875rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-            background: 'none', borderBottom: `2.5px solid ${tab === t.id ? '#e8843c' : 'transparent'}`,
-            color: tab === t.id ? '#e8843c' : '#6b7280',
+            background: 'none', borderBottom: `2.5px solid ${tab === t.id ? brandColor : 'transparent'}`,
+            color: tab === t.id ? brandColor : '#6b7280',
           }}>{t.label}</button>
         ))}
       </div>
@@ -461,13 +495,13 @@ function AdminDashboardInner({ onLogout, isTryout }) {
                   <div className="card" key={item.id}>
                     {item.image_url && <img src={item.image_url} alt={item.name} onError={e => e.target.style.display='none'} />}
                     <div className="card-body">
-                      <span className={`tag ${item.item_type}`}>{TYPE_LABELS[item.item_type] || item.item_type}</span>
+                      <span className={`tag ${item.item_type}`}>{typeLabel(item.item_type)}</span>
                       <h3>{item.name}</h3>
                       <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>{item.description}</p>
-                      {item.price && <p style={{ fontWeight: 600, color: '#e8843c' }}>{item.price}</p>}
+                      {item.price && <p style={{ fontWeight: 600, color: brandColor }}>{item.price}</p>}
                       {isTryout
                         ? <LockedButton label="Approve & Publish" style={{ marginTop: '0.5rem' }} />
-                        : <button className="btn" style={{ background: '#e8843c', marginTop: '0.5rem' }} onClick={() => approveListing(item.id)}>Approve & Publish</button>
+                        : <button className="btn" style={{ background: brandColor, marginTop: '0.5rem' }} onClick={() => approveListing(item.id)}>Approve & Publish</button>
                       }
                     </div>
                   </div>
@@ -485,10 +519,10 @@ function AdminDashboardInner({ onLogout, isTryout }) {
                   <div className="card" key={item.id} style={{ opacity: 0.85 }}>
                     {item.image_url && <img src={item.image_url} alt={item.name} onError={e => e.target.style.display='none'} />}
                     <div className="card-body">
-                      <span className={`tag ${item.item_type}`}>{TYPE_LABELS[item.item_type] || item.item_type}</span>
+                      <span className={`tag ${item.item_type}`}>{typeLabel(item.item_type)}</span>
                       <h3>{item.name}</h3>
                       <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>{item.description}</p>
-                      {item.price && <p style={{ fontWeight: 600, color: '#e8843c' }}>{item.price}</p>}
+                      {item.price && <p style={{ fontWeight: 600, color: brandColor }}>{item.price}</p>}
                       <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>✓ Live</span>
                     </div>
                   </div>
@@ -508,7 +542,7 @@ function AdminDashboardInner({ onLogout, isTryout }) {
           {isTryout ? (
             <LockedButton label="Add Listing" />
           ) : (
-            <AddListingForm onAdded={() => { load(); setTab('listings') }} />
+            <AddListingForm onAdded={() => { load(); setTab('listings') }} modeConfig={config?.mode_config} />
           )}
         </div>
       )}
@@ -539,7 +573,7 @@ function AdminDashboardInner({ onLogout, isTryout }) {
                       <LockedButton label="Approve" />
                     ) : (
                       <>
-                        <button className="btn" style={{ background: '#e8843c', fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={() => setApproveTarget(e)}>Approve</button>
+                        <button className="btn" style={{ background: brandColor, fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={() => setApproveTarget(e)}>Approve</button>
                         <button className="btn btn--outline" style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={() => reproposeAndReload(e.id)}>Re-run AI</button>
                         <button className="btn btn--outline" style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', color: '#dc2626', borderColor: '#dc2626' }} onClick={() => rejectEnquiry(e.id)}>Decline</button>
                       </>
@@ -565,7 +599,7 @@ function AdminDashboardInner({ onLogout, isTryout }) {
                       <LockedButton label="Approve" />
                     ) : (
                       <>
-                        <button className="btn" style={{ background: '#e8843c', fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={() => setApproveTarget(e)}>Approve</button>
+                        <button className="btn" style={{ background: brandColor, fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={() => setApproveTarget(e)}>Approve</button>
                         <button className="btn btn--outline" style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', color: '#dc2626', borderColor: '#dc2626' }} onClick={() => rejectEnquiry(e.id)}>Decline</button>
                       </>
                     )}
@@ -643,6 +677,7 @@ function AdminDashboardInner({ onLogout, isTryout }) {
       )}
 
     </div>
+    </BrandColorContext.Provider>
   )
 }
 

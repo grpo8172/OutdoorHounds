@@ -2,7 +2,7 @@ import { and, eq, inArray, ne, sql, isNotNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { catalogueItems } from "../drizzle/schema";
-import { getDb, getProfileByUserId } from "./db";
+import { getDb, getProfileByUserId, getTenantConfig } from "./db";
 import { adminProcedure, protectedProcedure, publicProcedure, publicTenantProcedure, writeProcedure, writeTenantProcedure, router } from "./_core/trpc";
 
 const ITEM_TYPES = [
@@ -198,6 +198,14 @@ export const itemsRouter = router({
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Complete your profile before creating a listing.",
+        });
+      }
+
+      const tenantConfig = await getTenantConfig(ctx.tenantId);
+      if (tenantConfig?.allowPublicListings === false) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This business isn't accepting public listing submissions.",
         });
       }
 
