@@ -46,11 +46,32 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  // Enable CORS for all routes - reflect the request origin to support credentials
+  // Known real callers of this API from a browser context. The session
+  // cookie is SameSite=None (see _core/cookies.ts) so it rides along on
+  // cross-site requests by design — reflecting ANY origin here (as this
+  // used to) combined with Allow-Credentials meant any third-party site
+  // could silently make authenticated requests as a logged-in user and read
+  // the response. Only echo the origin back (and only then allow
+  // credentials) for origins we actually recognize.
+  const ALLOWED_ORIGINS = new Set(
+    [
+      "https://mobile-web-339002663338.australia-southeast1.run.app",
+      process.env.ALLOWED_WEB_ORIGIN,
+      ...(process.env.ALLOWED_ORIGINS || "").split(",").map((o) => o.trim()),
+    ].filter(Boolean),
+  );
+
+  function isAllowedOrigin(origin: string): boolean {
+    if (ALLOWED_ORIGINS.has(origin)) return true;
+    // Local Expo web dev server — never matches real production traffic.
+    return /^http:\/\/localhost(:\d+)?$/.test(origin);
+  }
+
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin) {
+    if (origin && isAllowedOrigin(origin)) {
       res.header("Access-Control-Allow-Origin", origin);
+      res.header("Access-Control-Allow-Credentials", "true");
     }
     res.header(
       "Access-Control-Allow-Methods",
@@ -60,7 +81,6 @@ async function startServer() {
       "Access-Control-Allow-Headers",
       "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Tenant-Slug",
     );
-    res.header("Access-Control-Allow-Credentials", "true");
 
     // Handle preflight requests
     if (req.method === "OPTIONS") {

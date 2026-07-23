@@ -26,7 +26,8 @@ docker compose --profile mobile up -d mobile-web
 # Check running containers
 docker ps
 
-# Check logs
+# Check logs 
+
 docker compose --profile mobile logs mobile-web --tail=80
 
 docker compose --profile mobile logs mobile-api --tail=80

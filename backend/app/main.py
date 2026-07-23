@@ -100,10 +100,20 @@ NEW_TENANT_MODE_CONFIG = [
     {"key": "petting_zoo_booking", "active": False, "emoji": "", "label": "", "subtitle": "", "image": None, "cta_label": ""},
 ]
 
+# This API never uses cookies for auth (Bearer tokens only, see get_admin
+# above) — allow_credentials=True combined with allow_origins=["*"] made
+# Starlette dynamically reflect back whatever Origin a request sent (its own
+# documented behavior for that combination, since wildcard-with-credentials
+# isn't valid per the Fetch spec), which is only meaningfully dangerous if
+# there's an ambient credential (cookie) for a browser to ride along
+# automatically — there isn't one here. Turning allow_credentials off keeps
+# the storefront data genuinely public (mobile-web and any future consumer
+# can still read it cross-origin) while removing the reflect-any-origin
+# behavior entirely.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -349,7 +359,8 @@ def list_enquiries(db: Session = Depends(get_db), tenant: models.OwnerConfig = D
 
 
 @app.post("/api/enquiries", response_model=schemas.EnquiryResponse)
-def create_enquiry(enquiry: schemas.EnquiryCreate, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def create_enquiry(request: Request, enquiry: schemas.EnquiryCreate, db: Session = Depends(get_db)):
     """Customers can submit enquiries; nothing is confirmed until the owner approves.
     Tenant is derived from the item being enquired about, not a client-supplied
     param, so it can never be misattributed to the wrong site."""
@@ -446,34 +457,6 @@ def track_event(event: schemas.TrackEventRequest, tenant_slug: Optional[str] = Q
     return {"ok": True}
 
 
-@app.get("/api/me/profile", response_model=schemas.ProfileResponse)
-def get_my_profile(
-    user_id: int = Query(..., description="Mobile user ID"),
-    db: Session = Depends(get_db),
-):
-    profile = db.query(models.Profile).filter(models.Profile.user_id == user_id).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    return profile
-
-
-@app.put("/api/me/profile", response_model=schemas.ProfileResponse)
-def update_my_profile(
-    update: schemas.ProfileUpdate,
-    user_id: int = Query(..., description="Mobile user ID"),
-    db: Session = Depends(get_db),
-):
-    profile = db.query(models.Profile).filter(models.Profile.user_id == user_id).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    for field, value in update.model_dump(exclude_unset=True).items():
-        setattr(profile, field, value)
-    _log(db, "profile_updated", f"Profile for user {user_id} updated.")
-    db.commit()
-    db.refresh(profile)
-    return profile
-
-
 @app.get("/api/config", response_model=schemas.OwnerConfigResponse)
 def get_config(tenant_slug: Optional[str] = Query(None), db: Session = Depends(get_db)):
     return _resolve_tenant(db, tenant_slug)
@@ -516,15 +499,47 @@ def update_config(update: schemas.OwnerConfigUpdate, db: Session = Depends(get_d
     return tenant
 
 
+# "Admin" is a self-service paid tier (anyone can buy an admin_token, see
+# get_admin above), so this isn't owner-only in practice — trusting the
+# uploader's claimed extension/content-type let anyone with an admin
+# subscription store e.g. an .html or .svg file and have it served back
+# with a script-executing content-type, same-origin as the app (stored XSS).
+# Only ever trust our own detection of the actual image bytes (magic-byte
+# sniff, not stdlib's imghdr — deprecated and gone in Python 3.13+).
+def _sniff_image_content_type(header: bytes) -> Optional[str]:
+    if header.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if header.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if header.startswith(b"GIF87a") or header.startswith(b"GIF89a"):
+        return "image/gif"
+    if header[:4] == b"RIFF" and header[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+_IMAGE_EXTENSIONS = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
+
+
 @app.post("/api/config/photos")
 async def upload_config_photo(files: List[UploadFile] = File(...), _=Depends(get_admin)):
     urls = []
     for file in files:
-        ext = os.path.splitext(file.filename or "")[1] or ".jpg"
+        header = await file.read(16)
+        await file.seek(0)
+        content_type = _sniff_image_content_type(header)
+        if content_type is None:
+            raise HTTPException(status_code=400, detail="Only JPEG, PNG, WEBP, or GIF images are allowed.")
+        ext = _IMAGE_EXTENSIONS[content_type]
         filename = uuid.uuid4().hex[:16] + ext
         if _gcs_bucket is not None:
             blob = _gcs_bucket.blob(filename)
-            blob.upload_from_file(file.file, content_type=file.content_type)
+            blob.upload_from_file(file.file, content_type=content_type)
             urls.append(blob.public_url)
         else:
             dest = os.path.join(WEB_UPLOADS_DIR, filename)
@@ -543,7 +558,8 @@ async def serve_photo(filename: str):
 
 
 @app.post("/api/assistant/setup")
-def assistant_setup(prompt: str, llm: LLMProvider = Depends(get_llm_provider)):
+@limiter.limit("10/minute")
+def assistant_setup(request: Request, prompt: str, llm: LLMProvider = Depends(get_llm_provider)):
     """Setup assistant proposes structure only; it cannot publish anything itself."""
     result = llm.generate_json(f"setup: {prompt}")
     return {"proposed_setup": result, "status": "draft"}

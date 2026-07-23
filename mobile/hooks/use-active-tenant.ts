@@ -26,14 +26,39 @@ export function useActiveTenant() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [slug, setSlug] = useState<string | null | undefined>(undefined);
 
-  // A signed-in tenant owner should land on their OWN site by default,
-  // rather than the platform default or whatever tenant this device last
-  // joined (e.g. from testing/visiting another business's storefront) —
-  // but an explicit /t/:slug visit (app/t/[slug].tsx, which itself calls
-  // Tenant.setTenantSlug) always wins over this auto-join.
+  // Whether this device has EVER recorded a tenant decision before (joined
+  // one, or explicitly left one via leave()) — undefined until the initial
+  // async check resolves. This is deliberately read from durable storage
+  // (Tenant.hasMadeTenantChoice), not an in-memory ref: a plain in-memory
+  // "already handled this" flag would reset on every page refresh, which is
+  // exactly when this used to misfire (see below).
+  const [hasMadeChoice, setHasMadeChoice] = useState<boolean | undefined>(undefined);
+
   const onExplicitTenantRoute = pathname.startsWith("/t/");
+
+  useEffect(() => {
+    if (onExplicitTenantRoute) {
+      // app/t/[slug].tsx already persisted this visit via setTenantSlug
+      // before routing here — a real decision has been made.
+      setHasMadeChoice(true);
+      return;
+    }
+    Tenant.hasMadeTenantChoice().then(setHasMadeChoice);
+  }, [onExplicitTenantRoute]);
+
+  // A signed-in tenant owner should land on their OWN site by default the
+  // FIRST time ever on a device — rather than the platform default — but
+  // this must fire at most once per device, ever. Gating it only on "not
+  // currently on an explicit /t/:slug route" (as this used to) re-triggered
+  // on every navigation away from that route, silently undoing leave() and
+  // reverting an in-progress visit to someone else's tenant back to the
+  // owner's own site on refresh/back-navigation, since app/t/[slug].tsx
+  // itself redirects to /(tabs) right after joining. Gating on
+  // hasMadeChoice === false instead means: once ANY decision exists for
+  // this device (joined, or explicitly left), it's respected from then on.
+  const shouldAutoJoinOwnTenant = isAuthenticated && !onExplicitTenantRoute && hasMadeChoice === false;
   const ownedTenantQuery = trpc.subscriptions.getAdminStatus.useQuery(undefined, {
-    enabled: isAuthenticated && !onExplicitTenantRoute,
+    enabled: shouldAutoJoinOwnTenant,
   });
 
   useEffect(() => {
@@ -41,17 +66,18 @@ export function useActiveTenant() {
       Tenant.getTenantSlug().then(setSlug);
       return;
     }
-    if (authLoading) return;
-    if (isAuthenticated) {
+    if (authLoading || hasMadeChoice === undefined) return;
+    if (shouldAutoJoinOwnTenant) {
       if (ownedTenantQuery.isLoading) return;
       if (ownedTenantQuery.data?.slug) {
         const ownedSlug = ownedTenantQuery.data.slug;
         Tenant.setTenantSlug(ownedSlug).then(() => setSlug(ownedSlug));
+        setHasMadeChoice(true);
         return;
       }
     }
     Tenant.getTenantSlug().then(setSlug);
-  }, [onExplicitTenantRoute, authLoading, isAuthenticated, ownedTenantQuery.isLoading, ownedTenantQuery.data]);
+  }, [onExplicitTenantRoute, authLoading, hasMadeChoice, shouldAutoJoinOwnTenant, ownedTenantQuery.isLoading, ownedTenantQuery.data]);
 
   const query = trpc.tenant.getActive.useQuery(undefined, {
     enabled: !!slug,
@@ -67,6 +93,7 @@ export function useActiveTenant() {
 
   const leave = useCallback(async () => {
     await Tenant.clearTenantSlug();
+    setHasMadeChoice(true);
     setSlug(null);
   }, []);
 

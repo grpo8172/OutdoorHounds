@@ -159,15 +159,3 @@ class ProfileBase(BaseModel):
 
 class ProfileCreate(ProfileBase):
     user_id: int
-
-class ProfileUpdate(ProfileBase):
-    pass
-
-class ProfileResponse(ProfileBase):
-    id: int
-    user_id: int
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
