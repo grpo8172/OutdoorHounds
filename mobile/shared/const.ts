@@ -6,10 +6,10 @@ export const NOT_ADMIN_ERR_MSG = "You do not have required permission (10002)";
 
 // One-time payment that unlocks creating listings. Single source of truth —
 // used by both the client (display copy) and server (amount recorded on payment).
-export const UNLOCK_PRICE_CENTS = 100;
+export const UNLOCK_PRICE_CENTS = 1000;
 export const UNLOCK_PRICE_LABEL = `$${UNLOCK_PRICE_CENTS / 100}`;
 
-export const ADMIN_UNLOCK_PRICE_CENTS = 500;
+export const ADMIN_UNLOCK_PRICE_CENTS = 6000;
 export const ADMIN_UNLOCK_PRICE_LABEL = `$${ADMIN_UNLOCK_PRICE_CENTS / 100}`;
 
 export const PAYWALL_ERR_MSG = "Unlock Outdoor Hounds to continue (10003)";

@@ -24,6 +24,7 @@ function resolvePhotoUrl(url: string | null): string | null {
 export function useActiveTenant() {
   const pathname = usePathname();
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const utils = trpc.useUtils();
   const [slug, setSlug] = useState<string | null | undefined>(undefined);
 
   // Whether this device has EVER recorded a tenant decision before (joined
@@ -88,14 +89,21 @@ export function useActiveTenant() {
     if (query.error && isTenantNotFoundError(query.error)) {
       Tenant.clearTenantSlug();
       setSlug(null);
+      utils.tenant.getActive.reset();
     }
-  }, [query.error]);
+  }, [query.error, utils]);
 
   const leave = useCallback(async () => {
     await Tenant.clearTenantSlug();
     setHasMadeChoice(true);
     setSlug(null);
-  }, []);
+    // The active tenant is resolved server-side from an X-Tenant-Slug header,
+    // not part of this query's cache key, so React Query has no way to know
+    // the previous tenant's cached data is now stale — without this reset,
+    // the old tenant's branding/hero photo/name would linger on screen until
+    // a full page reload wiped the whole cache.
+    await utils.tenant.getActive.reset();
+  }, [utils]);
 
   const isDefault = !query.data || query.data.isDefault;
 
