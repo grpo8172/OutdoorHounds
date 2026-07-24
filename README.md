@@ -137,6 +137,47 @@ outdoor_hounds/
 
 ---
 
+## Architecture
+
+### Services
+
+The platform is three independently deployable services sharing one MySQL database:
+
+| Service | Stack | Role |
+|---|---|---|
+| `web` | FastAPI + React/Vite (single image, backend serves the built frontend) | Public storefront, marketplace, owner admin dashboard, AI setup assistant |
+| `mobile-api` | Express + tRPC + Drizzle | Backend for the Expo app — auth (Google OAuth), listings, bookings, subscriptions (PayPal), chat/LLM endpoints |
+| `mobile-web` | Expo web export served via nginx | Browser build of the same mobile app (what "Open the app" links to from the marketplace) |
+
+### Multi-tenancy
+
+Each business ("tenant") gets its own `owner_config` row and a unique `slug`. The mobile app resolves which tenant to show via:
+
+1. An explicit `/t/<slug>` deep link (sets the active tenant for that device), or
+2. The signed-in user's own tenant, if they own one and haven't explicitly left/switched, or
+3. A "no tenant chosen" default state.
+
+`catalogue_items` is a shared table — a listing created from the mobile app or the web admin dashboard shows up in both, scoped by `tenant_id`.
+
+### Request flow
+
+```
+Browser (web storefront) ──► web (FastAPI + React) ──► MySQL
+                                     │
+                                     └─ "Open the app" links out to ──► mobile-web (Expo web) ──► mobile-api (tRPC) ──► MySQL
+Expo mobile app (iOS/Android) ───────────────────────────────────────► mobile-api (tRPC) ──► MySQL
+```
+
+- `web` never talks to `mobile-api` server-to-server — they're linked only by sharing the database and by the marketplace's outbound links.
+- Auth differs by service: `web` uses bearer admin tokens (no cookies), `mobile-api` uses `SameSite=None; Secure` session cookies (required since `mobile-web` calls it cross-origin).
+- The AI setup assistant and chat features run through `backend/app/llm` (web) or `mobile/server/_core/llm.ts` (mobile), gated by `LLM_ENABLED` — the AI can draft/suggest but never publishes listings or confirms bookings without explicit owner approval.
+
+### Build-time config gotcha
+
+`VITE_MOBILE_API_URL` / `VITE_MOBILE_APP_URL` (web) and `EXPO_PUBLIC_API_BASE_URL` / `EXPO_PUBLIC_WEB_URL` (mobile web) are baked into the JS bundle at **build time**, not read at runtime. Rebuilding `web` or `mobile-web` without passing these as `--build-arg`s silently falls back to `localhost` defaults in production — always rebuild via the project's `cloudbuild.yaml`-style config (not a bare `gcloud builds submit --tag ...`) so the build-args are preserved.
+
+---
+
 ## Database
 
 The backend and mobile app share a single **MySQL** database (`outdoor_hounds`).
