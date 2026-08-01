@@ -200,6 +200,7 @@ function OwnerSetupInner({ isTryout }) {
     background_color: '',
     list_in_marketplace: false,
     allow_public_listings: true,
+    free_listings: false,
   }))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -269,6 +270,7 @@ function OwnerSetupInner({ isTryout }) {
         background_color: config.background_color || null,
         list_in_marketplace: config.list_in_marketplace,
         allow_public_listings: config.allow_public_listings,
+        free_listings: config.free_listings,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -357,6 +359,27 @@ function OwnerSetupInner({ isTryout }) {
           <span style={{ fontSize: '0.9rem' }}>Just me — only I can add listings, to represent my own brand</span>
         </label>
       </section>
+
+      {/* Fee waiver — only meaningful once public submissions are on. Scoped
+          to adopt/foster only server-side (see mobile's items.submit), so a
+          tenant with other active categories still charges for those. */}
+      {config.allow_public_listings !== false && (
+        <section style={sectionStyle}>
+          <h3 style={headingStyle}>Free pet adoption listings</h3>
+          <p style={{ fontSize: '0.85rem', color: '#777', margin: '0 0 1rem' }}>
+            Waive the listing fee for adopt/foster posts, so anyone can list a pet that needs a home at no cost — e.g. for a shelter or rescue's community link. Other categories on your site still use the normal fee.
+          </p>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={!!config.free_listings}
+              onChange={e => setConfig({ ...config, free_listings: e.target.checked })}
+              style={{ width: 18, height: 18, accentColor: '#e8843c', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '0.9rem' }}>Make adopt/foster listings free for everyone</span>
+          </label>
+        </section>
+      )}
 
       {/* Business name */}
       <section style={sectionStyle}>

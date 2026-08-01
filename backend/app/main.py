@@ -34,6 +34,7 @@ def _add_missing_columns() -> None:
         },
         "owner_config": {
             "allow_public_listings": "BOOLEAN DEFAULT TRUE",
+            "free_listings": "BOOLEAN DEFAULT FALSE",
         },
         "catalogue_items": {
             "cta_label": "VARCHAR(64)",

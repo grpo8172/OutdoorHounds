@@ -199,15 +199,19 @@ export default function CreateListingScreen() {
   });
   const hasProfile = !!profileQuery.data?.displayName;
 
-  const { modeConfig: tenantModeConfig, allowPublicListings } = useActiveTenant();
+  const { modeConfig: tenantModeConfig, allowPublicListings, freeListings } = useActiveTenant();
   const modes = useMemo(() => mergeTenantModes(tenantModeConfig), [tenantModeConfig]);
 
   const subscriptionQuery = trpc.subscriptions.getStatus.useQuery(undefined, {
     enabled: isAuthenticated && hasProfile,
   });
   const isGuest = user?.loginMethod === "guest";
+  // A free-listings tenant (e.g. a shelter's community link) waives the
+  // paid-unlock gate here for UX — the server independently re-checks this
+  // per-submission and is still mode-specific (adopt/foster only), see
+  // items.ts's submit mutation.
   const isUnlocked =
-    user?.loginMethod === "dev" || isGuest || (subscriptionQuery.data?.active ?? false);
+    user?.loginMethod === "dev" || isGuest || freeListings || (subscriptionQuery.data?.active ?? false);
 
   if (authLoading) {
     return (

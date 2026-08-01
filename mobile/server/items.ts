@@ -2,8 +2,9 @@ import { and, eq, inArray, ne, sql, isNotNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { catalogueItems } from "../drizzle/schema";
-import { getDb, getProfileByUserId, getTenantConfig } from "./db";
-import { adminProcedure, protectedProcedure, publicProcedure, publicTenantProcedure, writeProcedure, writeTenantProcedure, router } from "./_core/trpc";
+import { getDb, getProfileByUserId, getTenantConfig, consumeWriteQuota, PAID_DAILY_WRITE_LIMIT } from "./db";
+import { adminProcedure, protectedProcedure, protectedTenantProcedure, publicProcedure, publicTenantProcedure, writeProcedure, enforceWritePaywall, router } from "./_core/trpc";
+import { ENV } from "./_core/env";
 
 const ITEM_TYPES = [
   "pet",
@@ -162,11 +163,14 @@ export const itemsRouter = router({
   /**
    * Submission by an onboarded user — appears immediately in the swipe feed
    * (status: approved). Stores mode-specific detail fields inside
-   * listingMeta JSON. writeProcedure gates payment/guest-quota; a completed
-   * profile is re-checked here since the client-side gate on /create-listing
-   * can't be trusted on its own.
+   * listingMeta JSON. A completed profile is re-checked here since the
+   * client-side gate on /create-listing can't be trusted on its own.
+   * Uses protectedTenantProcedure (not writeTenantProcedure) rather than
+   * the blanket per-user payment gate, since whether payment is required
+   * here also depends on the tenant + mode (see the free-listings check
+   * below) — enforceWritePaywall is called manually once that's known.
    */
-  submit: writeTenantProcedure
+  submit: protectedTenantProcedure
     .input(
       z.object({
         mode: z.enum([
@@ -207,6 +211,21 @@ export const itemsRouter = router({
           code: "FORBIDDEN",
           message: "This business isn't accepting public listing submissions.",
         });
+      }
+
+      // A tenant can waive the paid listing fee, but only for adopt/foster
+      // posts (e.g. a shelter's community link) — every other mode on the
+      // same tenant still goes through the normal payment gate.
+      const isFreeAdoptionListing = !!tenantConfig?.freeListings && input.mode === "adopt_or_foster";
+      if (!isFreeAdoptionListing) {
+        await enforceWritePaywall(ctx.user);
+      } else if (ENV.isProduction) {
+        // Not a payment check — just keeps the free path metered at the
+        // same generous cap a paying user gets, instead of unmetered.
+        const allowed = await consumeWriteQuota(ctx.user.id, PAID_DAILY_WRITE_LIMIT);
+        if (!allowed) {
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Daily listing limit reached. Try again tomorrow." });
+        }
       }
 
       const db = await getDb();

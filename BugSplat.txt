@@ -1,0 +1,149 @@
+BugSplat — bugs found during site testing
+==========================================
+A running log of bugs caught while testing Outdoor Hounds / TownHubs, with
+what was actually causing each one.
+
+------------------------------------------------------------
+1. "Leave" didn't return to the base app without a hard refresh
+------------------------------------------------------------
+Symptom: After joining a tenant (e.g. /t/gibi5gdo, "Art Portfolio") and
+tapping "Leave," the screen kept showing the tenant's branding, name, and
+hero photo. Only a full page reload brought back the default "Outdoor
+Hounds" app.
+
+Cause: The active tenant is resolved server-side from an X-Tenant-Slug
+HTTP header (mobile/lib/trpc.ts), not from anything in the tRPC query's
+input. That means React Query's cache key for trpc.tenant.getActive never
+changes when the tenant changes — it has no way to know the previously
+cached data (the old tenant's name/photo/colors) is now stale once you
+leave. leave() cleared the stored slug and disabled the query, but the
+already-fetched data just sat in the cache and kept rendering.
+
+Fix: mobile/hooks/use-active-tenant.ts now calls
+utils.tenant.getActive.reset() inside leave() (and in the existing
+tenant-not-found self-heal effect), explicitly wiping the cached data so
+every derived field falls back to its default the instant you leave — no
+reload needed.
+
+------------------------------------------------------------
+2. Signed-in owner's auto-join silently undid "Leave"
+------------------------------------------------------------
+Symptom: A signed-in tenant owner would tap "Leave" on someone else's
+storefront, and their own site would pop right back on the next refresh or
+navigation — leave() appeared to not work at all.
+
+Cause: The "auto-join a signed-in owner to their own tenant" logic was
+gated only on "not currently on an explicit /t/:slug route." That
+condition becomes true again the instant you navigate anywhere after
+joining/leaving, so it re-fired on every render and re-joined the owner's
+own tenant, overwriting whatever leave() had just cleared. There was no
+concept of "this device already made a decision" — only "are we on this
+one specific route right now."
+
+Fix: Added a durable hasMadeTenantChoice flag (mobile/lib/_core/tenant.ts),
+backed by persistent storage rather than an in-memory flag (an in-memory
+flag would reset on every refresh, which is exactly when this used to
+misfire). Auto-join now only fires when hasMadeChoice === false, i.e. this
+device has never made ANY tenant decision, joined or left. Once any
+decision exists, it's respected from then on.
+
+------------------------------------------------------------
+3. "Leave" was indistinguishable from "never chosen a tenant"
+------------------------------------------------------------
+Symptom: Related to #2 — clearing the tenant slug via leave() looked
+identical, from storage's point of view, to a brand-new device that had
+never joined anything.
+
+Cause: clearTenantSlug() removed the storage key outright. Both "explicitly
+left" and "never made a choice" then read back as the same value: null.
+The auto-join logic (see #2) can't tell those apart without a real marker.
+
+Fix: clearTenantSlug() now writes a NONE_MARKER sentinel instead of
+deleting the key. getTenantSlug() treats the marker as "no active tenant"
+(unchanged behavior for consumers), while hasMadeTenantChoice() treats the
+marker's mere presence as "yes, a decision was made" — the two questions
+("what's the active tenant" vs. "has this device ever decided") are no
+longer conflated.
+
+------------------------------------------------------------
+4. Mobile API reflected any Origin + allowed credentials (CSRF)
+------------------------------------------------------------
+Symptom: Found during a CORS/CSRF review, not a visible UI bug — the
+mobile-api Express server echoed back whatever Origin header a request
+sent and always set Access-Control-Allow-Credentials: true.
+
+Cause: The session cookie is SameSite=None (by design, so it works across
+the app's own cross-origin setup), which means it rides along automatically
+on any cross-site request a browser makes. Combining "allow literally any
+origin" with "allow credentials" meant any third-party website could make
+an authenticated request to the API as a logged-in user from their
+browser and read the response — a textbook CSRF/credentialed-CORS hole.
+
+Fix: mobile/server/_core/index.ts now only reflects the origin (and only
+then sets Allow-Credentials) for an explicit allowlist of known real
+callers (the deployed mobile-web origin, configured web origin(s), and
+localhost for dev). Any other origin gets no Allow-Origin header at all.
+
+------------------------------------------------------------
+5. Backend web API: wildcard CORS combined with credentials
+------------------------------------------------------------
+Symptom: Same review as #4, different service — backend/app/main.py had
+allow_origins=["*"] and allow_credentials=True on the FastAPI/Starlette
+CORS middleware.
+
+Cause: That combination isn't actually valid per the Fetch spec (a
+wildcard origin can't be paired with credentials), so Starlette's
+documented fallback behavior is to dynamically reflect back whatever
+Origin was sent — functionally identical to #4. This API only uses bearer
+tokens for auth (no cookies), so there's no ambient credential a browser
+would attach automatically — meaning the credentials flag wasn't even
+doing anything useful, just adding risk.
+
+Fix: Set allow_credentials=False. Storefront data stays genuinely public
+and readable cross-origin (mobile-web and any future consumer can still
+read it) without the reflect-any-origin behavior.
+
+------------------------------------------------------------
+6. Photo upload trusted the caller's claimed file type (stored XSS)
+------------------------------------------------------------
+Symptom: Found during the same review — not something a normal test click
+would surface. /api/config/photos took the uploaded file's claimed
+extension/content-type at face value.
+
+Cause: "Admin" is just a self-service paid tier — anyone who buys an admin
+subscription can hit this endpoint. Trusting the client-supplied
+filename/content-type meant an admin could upload something like an .html
+or .svg file and have it served back with a script-executing content type,
+same-origin as the app itself — stored XSS via the photo upload feature.
+
+Fix: The backend now sniffs the actual file bytes (magic-byte check for
+JPEG/PNG/GIF/WEBP signatures) and rejects anything that doesn't match a
+real image, instead of trusting what the client claims. (Not Python's
+stdlib imghdr — deprecated and removed in Python 3.13+.)
+
+------------------------------------------------------------
+7. Unauthenticated profile endpoints (IDOR)
+------------------------------------------------------------
+Symptom: /api/me/profile (GET and PUT) took a plain user_id query
+parameter with no authentication check at all.
+
+Cause: Anyone could pass any user_id and read or overwrite that person's
+profile data — a classic insecure-direct-object-reference bug. These
+endpoints were leftover/unused (a mobile equivalent already existed
+properly authenticated), so there was no legitimate caller depending on
+the unauthenticated version.
+
+Fix: Removed both endpoints and their now-unused schemas entirely rather
+than bolting auth onto dead code.
+
+------------------------------------------------------------
+8. No rate limiting on enquiry submission / AI setup assistant
+------------------------------------------------------------
+Symptom: /api/enquiries and /api/assistant/setup had no request throttling.
+
+Cause: Both are public-facing, unauthenticated-or-lightly-authenticated
+endpoints that do real work per call (writing an enquiry to the DB /
+calling an LLM) — with no limit, either could be hammered as a spam vector
+or to run up LLM costs.
+
+Fix: Added a 10/minute rate limit to both.

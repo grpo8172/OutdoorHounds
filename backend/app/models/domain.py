@@ -123,6 +123,11 @@ class OwnerConfig(Base):
     # single-owner portfolio/brand instead of a community marketplace.
     # Doesn't affect the admin's own Add Listing tab, which always works.
     allow_public_listings = Column(Boolean, default=True)
+    # Waives the paid listing fee for public adopt/foster submissions on this
+    # tenant only (e.g. a shelter/rescue's community link) — other categories
+    # on the same tenant still go through the normal paywall. See mobile's
+    # items.submit for the actual enforcement.
+    free_listings = Column(Boolean, default=False)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 class Profile(Base):

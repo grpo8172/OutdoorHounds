@@ -24,6 +24,7 @@ export const tenantRouter = router({
       chatPlaceholder: config?.chatPlaceholder ?? null,
       chatDisclaimer: config?.chatDisclaimer ?? null,
       allowPublicListings: config?.allowPublicListings ?? true,
+      freeListings: config?.freeListings ?? false,
     };
   }),
 });

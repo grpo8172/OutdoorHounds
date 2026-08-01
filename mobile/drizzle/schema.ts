@@ -89,6 +89,9 @@ export const ownerConfig = mysqlTable("owner_config", {
   // can add listings, i.e. this tenant is a single-owner brand, not a
   // community marketplace. See backend/app/models/domain.py for the source.
   allowPublicListings: boolean("allow_public_listings"),
+  // Waives the paid listing fee for public adopt/foster submissions on this
+  // tenant only — see mobile/server/items.ts's submit mutation.
+  freeListings: boolean("free_listings"),
   // Not a real FK (see subscriptions.adminToken's own comment) — joined
   // against subscriptions.adminToken to resolve "which tenant does this
   // signed-in user own" (see getOwnedTenantSlugForUser in server/db.ts).
