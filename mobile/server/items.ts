@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { catalogueItems } from "../drizzle/schema";
 import { getDb, getProfileByUserId, getTenantConfig, consumeWriteQuota, PAID_DAILY_WRITE_LIMIT } from "./db";
-import { adminProcedure, protectedProcedure, protectedTenantProcedure, publicProcedure, publicTenantProcedure, writeProcedure, enforceWritePaywall, router } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, protectedTenantProcedure, publicProcedure, publicTenantProcedure, writeProcedure, enforceListingPaywall, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 
 const ITEM_TYPES = [
@@ -168,7 +168,7 @@ export const itemsRouter = router({
    * Uses protectedTenantProcedure (not writeTenantProcedure) rather than
    * the blanket per-user payment gate, since whether payment is required
    * here also depends on the tenant + mode (see the free-listings check
-   * below) — enforceWritePaywall is called manually once that's known.
+   * below) — enforceListingPaywall is called manually once that's known.
    */
   submit: protectedTenantProcedure
     .input(
@@ -218,7 +218,7 @@ export const itemsRouter = router({
       // same tenant still goes through the normal payment gate.
       const isFreeAdoptionListing = !!tenantConfig?.freeListings && input.mode === "adopt_or_foster";
       if (!isFreeAdoptionListing) {
-        await enforceWritePaywall(ctx.user);
+        await enforceListingPaywall(ctx.user);
       } else if (ENV.isProduction) {
         // Not a payment check — just keeps the free path metered at the
         // same generous cap a paying user gets, instead of unmetered.

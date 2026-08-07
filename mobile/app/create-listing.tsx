@@ -94,6 +94,7 @@ function GateScreen({
   devOnPress,
   devError,
   guestOnPress,
+  note,
 }: {
   title: string;
   description: string;
@@ -102,13 +103,32 @@ function GateScreen({
   devOnPress?: () => void;
   devError?: string | null;
   guestOnPress?: () => void;
+  note?: string;
 }) {
   return (
     <ScreenContainer className="p-6 items-center justify-center">
       <View style={{ alignItems: 'center', gap: 16, maxWidth: 320, width: '100%' }}>
-        <Text style={{ fontSize: 48 }}>🔒</Text>
+        <Text style={{ fontSize: 48 }}>{note ? '🐾' : '🔒'}</Text>
         <Text className="text-2xl font-bold text-foreground text-center">{title}</Text>
         <Text className="text-base text-muted text-center">{description}</Text>
+        {note && (
+          <View
+            style={{
+              backgroundColor: '#eafbf0',
+              borderWidth: 1,
+              borderColor: '#a8d4b8',
+              borderRadius: 12,
+              padding: 12,
+              width: '100%',
+              flexDirection: 'row',
+              gap: 8,
+              alignItems: 'flex-start',
+            }}
+          >
+            <Text style={{ fontSize: 16 }}>🎉</Text>
+            <Text style={{ flex: 1, fontSize: 13, color: '#2f6b46' }}>{note}</Text>
+          </View>
+        )}
         <Pressable
           onPress={onPress}
           style={{
@@ -206,12 +226,21 @@ export default function CreateListingScreen() {
     enabled: isAuthenticated && hasProfile,
   });
   const isGuest = user?.loginMethod === "guest";
-  // A free-listings tenant (e.g. a shelter's community link) waives the
-  // paid-unlock gate here for UX — the server independently re-checks this
-  // per-submission and is still mode-specific (adopt/foster only), see
-  // items.ts's submit mutation.
-  const isUnlocked =
-    user?.loginMethod === "dev" || isGuest || freeListings || (subscriptionQuery.data?.active ?? false);
+  // Guests and dev/paid users are never blocked by the top-level paywall
+  // screen below — guests get their own small daily quota server-side
+  // instead of the $10/$60 gate (see enforceWritePaywall's guest branch).
+  const trulyUnlocked = user?.loginMethod === "dev" || isGuest || (subscriptionQuery.data?.active ?? false);
+  // A free-listings tenant (e.g. a shelter's community link) additionally
+  // waives the paid-unlock gate here for UX — the server independently
+  // re-checks this per-submission and is still mode-specific (adopt/foster
+  // only), see items.ts's submit mutation.
+  const isUnlocked = trulyUnlocked || freeListings;
+  // Whether OTHER categories (not adopt/foster) are postable at the
+  // generous 40/day rate rather than either a hard paywall block or a
+  // guest's much smaller 3/day cap — used to decide the per-category
+  // labeling below, since freeListings only ever waives the fee for
+  // adopt/foster, not every category on the tenant.
+  const fullyUnlockedForAllCategories = user?.loginMethod === "dev" || (subscriptionQuery.data?.active ?? false);
 
   if (authLoading) {
     return (
@@ -236,12 +265,17 @@ export default function CreateListingScreen() {
     return (
       <GateScreen
         title="Sign in to create a listing"
-        description="You can browse and swipe without an account, but creating a listing needs you to be signed in."
+        description="You can browse and swipe without an account, but creating a listing needs you to be signed in — so people know who they're dealing with."
         ctaLabel="Sign in with Google"
         onPress={() => startOAuthLogin()}
         guestOnPress={handleGuestLogin}
         devOnPress={handleDevLogin}
         devError={devLoginError}
+        note={
+          freeListings
+            ? "Adopt & Foster listings are free here. Continuing as a guest is free too — no payment, no subscription."
+            : undefined
+        }
       />
     );
   }
@@ -286,10 +320,24 @@ export default function CreateListingScreen() {
     );
   }
 
-  return <ListingForm modes={modes} />;
+  return (
+    <ListingForm
+      modes={modes}
+      freeListings={freeListings}
+      fullyUnlockedForAllCategories={fullyUnlockedForAllCategories}
+    />
+  );
 }
 
-function ListingForm({ modes }: { modes: ReturnType<typeof mergeTenantModes> }) {
+function ListingForm({
+  modes,
+  freeListings,
+  fullyUnlockedForAllCategories,
+}: {
+  modes: ReturnType<typeof mergeTenantModes>;
+  freeListings: boolean;
+  fullyUnlockedForAllCategories: boolean;
+}) {
   const router = useRouter();
   const [form, setForm] = useState(EMPTY_FORM);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
@@ -396,27 +444,60 @@ function ListingForm({ modes }: { modes: ReturnType<typeof mergeTenantModes> }) 
             <View className="flex-row flex-wrap gap-2">
               {modes.map((mode) => {
                 const selected = form.mode === mode.id;
+                const isAdoptFoster = mode.id === "adopt_or_foster";
+                // Neither paid/dev nor covered by the free-listings waiver —
+                // this category would hit the real $10/$60 paywall on
+                // submit (guests included: a guest gets no special pass for
+                // paid-category listings, see enforceListingPaywall), so
+                // lock it here instead of letting them fill out the whole
+                // form first.
+                const locked = freeListings && !fullyUnlockedForAllCategories && !isAdoptFoster;
                 return (
                   <Pressable
                     key={mode.id}
+                    disabled={locked}
                     onPress={() => setForm((f) => ({ ...f, mode: mode.id }))}
                     style={{
                       borderRadius: 999,
                       paddingHorizontal: 16,
                       paddingVertical: 8,
                       borderWidth: 1.5,
+                      opacity: locked ? 0.45 : 1,
                       backgroundColor: selected ? "#e8843c" : "#ffffff",
                       borderColor: selected ? "#e8843c" : "#ddd5c4",
                     }}
                   >
                     <Text style={{ fontSize: 13, fontWeight: "500", color: selected ? "#ffffff" : "#2c2c2c" }}>
                       {mode.emoji} {mode.title}
+                      {freeListings && isAdoptFoster ? " · Free" : ""}
+                      {locked ? " 🔒" : ""}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
           </Field>
+
+          {freeListings && selectedMode === "adopt_or_foster" && (
+            <View
+              style={{
+                backgroundColor: "#eafbf0",
+                borderWidth: 1,
+                borderColor: "#a8d4b8",
+                borderRadius: 12,
+                padding: 12,
+                marginBottom: 20,
+                flexDirection: "row",
+                gap: 8,
+                alignItems: "flex-start",
+              }}
+            >
+              <Text style={{ fontSize: 16 }}>🎉</Text>
+              <Text style={{ flex: 1, fontSize: 13, color: "#2f6b46" }}>
+                Adopt & Foster listings are free here — no listing fee, so more pets find homes.
+              </Text>
+            </View>
+          )}
 
           {/* Title */}
           <Field label="Title" required>

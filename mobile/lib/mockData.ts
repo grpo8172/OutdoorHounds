@@ -44,7 +44,7 @@ export const mockProfiles: Profile[] = [
     distance: 2.5,
     description: "Friendly and energetic Golden Retriever who loves hiking and swimming. Great with other dogs and kids.",
     images: [
-      "https://images.unsplash.com/photo-1633722715463-d30628519d00?w=400&h=500&fit=crop",
+      "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&h=500&fit=crop",
       "https://images.unsplash.com/photo-1558788353-f76d92427f16?w=400&h=500&fit=crop",
     ],
   },
@@ -59,8 +59,7 @@ export const mockProfiles: Profile[] = [
     distance: 5.2,
     description: "Beautiful Husky with striking blue eyes. Loves outdoor adventures and is very social.",
     images: [
-      "https://images.unsplash.com/photo-1605025614411-a2a44f7e4b0b?w=400&h=500&fit=crop",
-      "https://images.unsplash.com/photo-1600011689520-08ab6fd648b1?w=400&h=500&fit=crop",
+      "https://images.unsplash.com/photo-1568572933382-74d440642117?w=400&h=500&fit=crop",
     ],
   },
   {
@@ -74,7 +73,7 @@ export const mockProfiles: Profile[] = [
     distance: 8.1,
     description: "Energetic Lab who loves fetch and swimming. Perfect hiking companion for all skill levels.",
     images: [
-      "https://images.unsplash.com/photo-1633722715463-d30628519d00?w=400&h=500&fit=crop",
+      "https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?w=400&h=500&fit=crop",
     ],
   },
   {
@@ -88,7 +87,7 @@ export const mockProfiles: Profile[] = [
     distance: 3.0,
     description: "Cute and curious Dachshund. Loves short walks and socializing at dog parks.",
     images: [
-      "https://images.unsplash.com/photo-1552053831-71594a27c62d?w=400&h=500&fit=crop",
+      "https://images.unsplash.com/photo-1505628346881-b72b27e84530?w=400&h=500&fit=crop",
     ],
   },
   {

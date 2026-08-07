@@ -71,6 +71,29 @@ export async function enforceWritePaywall(user: User): Promise<void> {
   }
 }
 
+// Like enforceWritePaywall, but without the guest carve-out — used only for
+// listing submissions outside a tenant's free-listings waiver. The small
+// guest quota above exists for lower-stakes actions (saving a listing,
+// messaging), not as a backdoor around the $10/$60 unlock for posting a
+// paid-category listing — a guest posting there should hit the same
+// paywall as any other signed-in-but-unpaid user, not a free daily
+// allowance. See items.ts's submit mutation.
+export async function enforceListingPaywall(user: User): Promise<void> {
+  if (!ENV.isProduction) return;
+
+  if (await hasActiveAdminSubscription(user.id)) return;
+
+  const unlocked = await hasActiveSubscription(user.id);
+  if (!unlocked) {
+    throw new TRPCError({ code: "FORBIDDEN", message: PAYWALL_ERR_MSG });
+  }
+
+  const allowed = await consumeWriteQuota(user.id, PAID_DAILY_WRITE_LIMIT);
+  if (!allowed) {
+    throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: DAILY_CAP_ERR_MSG });
+  }
+}
+
 // Payment endpoints themselves (subscriptions router) must NOT use this —
 // you can't require having already paid in order to pay.
 export const writeProcedure = t.procedure.use(

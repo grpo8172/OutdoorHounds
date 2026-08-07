@@ -11,11 +11,11 @@ const DEFAULT_BRAND_COLOR = "#e8843c";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const {
     isNonDefault, businessName, siteEmoji: tenantEmoji, slug,
     brandColor, backgroundColor, heroPhoto, tagline, modeConfig, leave,
-    allowPublicListings,
+    allowPublicListings, freeListings,
   } = useActiveTenant();
 
   const siteName = businessName ?? "Outdoor Hounds";
@@ -92,6 +92,13 @@ export default function HomeScreen() {
               <View className="flex-1">
                 <Text className="text-lg font-bold text-white">{mode.title}</Text>
                 <Text className="text-xs text-white/75">{mode.subtitle}</Text>
+                {freeListings && mode.id === "adopt_or_foster" && (
+                  <View style={{ flexDirection: "row", marginTop: 4 }}>
+                    <View style={{ backgroundColor: "#a8d4b8", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
+                      <Text style={{ color: "#14361f", fontSize: 11, fontWeight: "700" }}>🎉 Free to list</Text>
+                    </View>
+                  </View>
+                )}
               </View>
               <View className="bg-white/20 rounded-full px-3 py-1.5 border border-white/30">
                 <Text className="text-white text-xs font-semibold">Browse →</Text>
@@ -174,6 +181,20 @@ export default function HomeScreen() {
         <Text className="text-center text-xs text-muted" style={{ marginTop: 4 }}>
           Tap a card to start browsing
         </Text>
+
+        {/* Sign out — reachable from the Settings tab too, but that's easy
+            to miss on the web build where there's no persistent nav chrome
+            beyond the tab bar itself, so it's worth surfacing here too. */}
+        {!loading && user && (
+          <Pressable
+            onPress={() => logout()}
+            style={{ alignItems: "center", paddingVertical: 8 }}
+          >
+            <Text className="text-center text-xs text-muted" style={{ textDecorationLine: "underline" }}>
+              Sign out{user.name ? ` (${user.name})` : ""}
+            </Text>
+          </Pressable>
+        )}
       </ScrollView>
     </ScreenContainer>
   );
